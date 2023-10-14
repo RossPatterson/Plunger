@@ -1,0 +1,23 @@
+@SETLOCAL
+@REM
+@REM Requires Lucius Leland's vma.exe from https://www.homerow.net/zvm/vma/
+@REM
+@DEL rtdoc1.vmarc rtdoc2.vmarc
+
+@SET TEMPDIR=%TEMP%\%RANDOM%
+MKDIR %TEMPDIR%
+PUSHD %TEMPDIR%
+
+vma -x ..\rtdoc.vmarc
+
+vma -a rtdoc1.vmarc DMSC3DTC.PS.E2 DMSD0DTS.PS.E2 PIPELINE.PDF.E1
+
+vma -a -r f -l 4096 rtdoc2.vmarc PIPELINE.BOOK.E1
+vma -a -r f -l 80 rtdoc2.vmarc APPNDIXD.TXT.E2
+vma -a rtdoc2.vmarc DMSC3DTC.LIST3820.E2 DMSD0DTS.LIST3820.E2 PIPELINE.NEWS.A1 PIPELINE.NEWS114.E2 PIPELINE.NEWS115.E2 PIPELINE.NEWS116.E2 PIPELINE.NEWS117.E2 PIPELINE.NEWS118.E2 PIPELINE.NEWS119.E2 PIPELINE.NEWS1110.E2 PIPELINE.NEWS1111.E2 PIPELINE.NEWS1112.E1
+
+vma -v rtdoc1.vmarc
+vma -v rtdoc2.vmarc
+
+POPD
+RMDIR /q/s %TEMPDIR%

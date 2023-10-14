@@ -1,0 +1,18 @@
+--------------------------------------------------------------------------------
+Date: 2023-10-13
+Num: 1
+Issue: TRANS99 - Error writing file (RC = 6): file transfer canceled
+
+Downloaded CMS Pipelines Runtime Distribution, failed to upload RTDOC VMARC
+because it is too large to store in a CDF file (~89K records).
+
+Test:
+IND$FILE PUT RTDOC VMARC
+
+Fix:
+Split RTDOC VMARC using splitdoc.bat into RTDOC1 VMARC (PDF and PS files) and
+RTDOC2 VMARC (all the other files).
+
+NOTE: RTDOC1 shouldn't need to be uploaded to CMS.
+
+--------------------------------------------------------------------------------
