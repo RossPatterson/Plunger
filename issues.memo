@@ -16,3 +16,33 @@ RTDOC2 VMARC (all the other files).
 NOTE: RTDOC1 shouldn't need to be uploaded to CMS.
 
 --------------------------------------------------------------------------------
+Date: 2024-04-29
+Num: 2
+Issue: CMS Pipelines needs to be NUCXLOADed.
+
+Appendix D "Running Multiple Versions" of SL26-0018-06 "CMS/TSO Pipelines
+Author's Edition 1.1.12" says to load the Pipelines back-end (PIPELINE MODULE)
+as follows:
+
+    Assuming you are running with the Program Offering level of CMS Pipelines
+    and you wish to try some commands against the pipeline shipped in Virtual
+    Machine/Enterprise Systems Architecture, you can issue these commands to
+    make an EPIPE command:
+
+    nucxload epipmod dmspipe (system service immcmd
+    epipmod install epipe
+
+VM/370 CMS does not have a NUCXLOAD command, or relocatable MODULEs.
+
+Test:
+None
+
+Fix:
+Wrote RPSNXL ASSEMBLE to NUCXLOAD a relocatable module, as close to how CMS/SP5
+would as possible.
+
+NOTE: There is no documentation on the relocation data in a MODULE file.
+      This support might not work for other MODULEs.  See the big warning at
+      the top of RPSNXL ASSEMBLE.
+
+--------------------------------------------------------------------------------

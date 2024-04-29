@@ -1,0 +1,9 @@
+/* MKPLUNGE - Build the Pipe cleaner. */
+Signal on Error
+'VMFASM RPSNXL PLUNGER DISK RENT RLD'
+
+Exit 0
+
+Error:
+Say 'Error' RC 'in line' SigL':' SourceLine(SigL)
+Exit RC

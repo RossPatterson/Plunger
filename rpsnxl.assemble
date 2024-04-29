@@ -1,0 +1,568 @@
+NXL      TITLE 'RPSNXL - NUCXLOAD command.'
+***********************************************************************
+*                                                                     *
+*        This module is an implementation of NUCXLOAD from scratch.   *
+*                                                                     *
+*    >>> WARNING <<<                                                  *
+*                                                                     *
+*        The work was undertaken for the specific purpose of getting  *
+*        an old VM/SP5 relocatable MODULE to run under VM/370 CMS.    *
+*        This version of NUCXLOAD loads it correctly, but has not     *
+*        been tested on any other relocatable modules.  Furthermore,  *
+*        the format of the Relocation Dictionary (RLD) data is not    *
+*        documented.  It is pretty trivial to reverse-engineer, but   *
+*        there is one known problem: RLD items with the X'80' bit set *
+*        in the length field have no obvious meaning.  Ignoring that  *
+*        apparent flag and processing them anyway causes radically    *
+*        incorrect relocation effects.  THEREFORE, THIS VERSION       *
+*        IGNORES ENTRIES WITH THE X'80' FLAG SET ENTIRELY.  I have no *
+*        idea if that is a good thing to do or not.                   *
+*                                                                     *
+*        VM/CE CMS doesn't yet support immediate commands.  But we    *
+*        want to let the caller run, so we accept and ignore the      *
+*        IMMCMD option.                                               *
+*                                                                     *
+***********************************************************************
+RPSNXL   CSECT ,
+         USING RPSNXL,R12
+         USING NUCON,0
+         B     *+12
+         DC    CL8'RPSNXL'     Eyecatcher.
+         STM   R14,R12,12(R13) Save caller's regs.
+         LR    R4,R1           Save plist.
+         USING SCBLOCK,R2
+         LR    R3,R13          Save caller's savearea.
+         SR    R13,R13         Say we don't have our own savearea
+         SR    R11,R11            or work area.
+         LA    R0,9
+         DMSFREE DWORDS=(0),TYPCALL=BALR,TYPE=USER,ERR=EXITFRE1
+         ST    R1,8(,R3)      Chain our savearea onto caller's
+         ST    R3,4(,R1)         and theirs to ours.
+         LR    R13,R1         Save area
+         LA    R0,WRKLEND
+         DMSFREE DWORDS=(0),TYPCALL=BALR,TYPE=USER,ERR=EXITFRE2
+         LR    R11,R1         Work area
+         USING WRKSECT,R11
+         XC    WRKSECT(WRKLEN),WRKSECT Clear out work area.
+         TM    SCBUFLAG,SCBUFDBG  Are we debugging?
+         BZ    *+8            No, skip.
+         OI    WRKFLAG1,WRKF1DBG  Yes, turn on debugging flag.
+         DROP  R2
+         LR    R1,R4          Restore plist.
+         SPACE ,
+         BAL   R9,PARSECMD    Parse the command.
+         BNZ   EXIT           Error, exit.
+         BAL   R9,PREPARE     Prepare for operation.
+         BNZ   EXIT           Error, exit.
+         BAL   R9,READHDR     Read the module header.
+         BNZ   EXIT           Error, exit.
+         BAL   R9,LOADMOD     Load the module.
+         BNZ   EXIT           Error, exit.
+         BAL   R9,READMAP     Load the READMAP.
+         BNZ   EXIT           Error, exit.
+         BAL   R9,READRLD     Load the relocation dictionary.
+         BNZ   EXIT           Error, exit.
+         BAL   R9,RELOC       Relocate the module.
+         BNZ   EXIT           Error, exit.
+         BAL   R9,REGISTER    Register the nucleus extension.
+         SPACE ,
+EXIT     DS    0H
+         LR    R2,R15         Preserve return code.
+         LTR   R11,R11        Do we have a workarea?
+         BZ    EXITBFOK       No, we can't have a buffer.
+         L     R1,WRKBUFAD    Get the buffer location.
+         LTR   R1,R1          Got one?
+         BZ    EXITBFOK       No, skip returning it.
+         L     R14,WRKBUFLN   Get size
+         LA    R0,7(,R14)         of module
+         SRL   R0,3                  in doublewords.
+         DMSFRET DWORDS=(0),LOC=(1),TYPCALL=BALR
+EXITBFOK DS    0H
+         LTR   R11,R11        Do we have a workarea?
+         BZ    EXITMDOK       No, we can't have a module area.
+         L     R1,WRKMODAD    Get the module area location.
+         LTR   R1,R1          Do we still have responsibility for it?
+         BZ    EXITMDOK       No, skip returning it.
+         L     R14,WRKMODLN   Get size
+         LA    R0,7(,R14)         of module
+         SRL   R0,3                  in doublewords.
+         DMSFRET DWORDS=(0),LOC=(1),TYPCALL=BALR
+EXITMDOK DS    0H
+         LTR   R1,R11         Do we have a workarea?
+         BZ    EXITWKOK       No, skip returning it.
+         LA    R0,WRKLEND    Get size of workarea.
+         DMSFRET DWORDS=(0),LOC=(1),TYPCALL=BALR
+EXITWKOK DS    0H
+         LR    R1,R13         Preserve savearea address.
+         L     R13,4(,R13)    Point to caller's savearea.
+         LTR   R1,R1          Do we have a savearea?
+         BZ    EXITSVOK       No skip returning it.
+         LA    R0,9           Get size of savearea.
+         DMSFRET DWORDS=(0),LOC=(1),TYPCALL=BALR
+EXITSVOK DS    0H
+         L     R14,12(,R13)   Restore return address.
+         LR    R15,R2         Set return code.
+         LM    R0,R12,20(R13) Restore remaining regs.
+         BR    R14            Return to CMS.
+         SPACE 1
+* Couldn't get save area ... really bad.
+EXITFRE1 LR    R3,R15
+         LINEDIT TEXT='RPSNXL109S Virtual storage capacity exceeded RC=*
+               ........',SUB=(DEC,(R3)),DISP=ERRMSG,MF=(E,WRKLEDPL)
+         LR    R13,R2
+         LA    R2,104
+         B     EXITSVOK
+         SPACE 1
+* Couldn't get work area ... less bad, still fatal.
+EXITFRE2 LR    R3,R15
+         LINEDIT TEXT='RPSNXL109S Virtual storage capacity exceeded RC=*
+               ........',SUB=(DEC,(R3)),DISP=ERRMSG,MF=(E,WRKLEDPL)
+         LA    R15,104
+         B     EXIT
+         TITLE 'PARSECMD - Parse the command line.'
+PARSECMD DS    0H
+         LA    R3,8(,R1)      Point past 'NUCXLOAD'.
+         CLI   0(R3),X'FF'    End of plist?
+         BE    PARSNONM       Yes, error.
+         CLI   0(R3),C'('     Start of options?
+         BE    PARSNONM       Yes, error.
+         MVC   WRKMODNM,0(R3) No, copy module name
+         MVC   WRKMODFN,WRKMODNM   and set default filename.
+         LA    R3,8(,R3)      Advance plist pointer.
+         CLI   0(R3),X'FF'    End of plist?
+         BE    PARSEXIT       Yes, done.
+         CLI   0(R3),C'('     Start of options?
+         BE    PARSOPLP       Yes, process them.
+         MVC   WRKMODFN,0(R3) No,must be filename.
+         LA    R3,8(,R3)      Advance plist pointer.
+         CLI   0(R3),X'FF'    End of plist?
+         BE    PARSEXIT       Yes, done.
+         CLI   0(R3),C'('     Start of options?
+         BNE   PARSNOPA       No, error.
+PARSOPLP DS    0H
+         LA    R3,8(,R3)      Advance plist pointer.
+         CLI   0(R3),X'FF'    End of plist?
+         BE    PARSOPOK       Yes, done.
+         CLI   0(R3),C')'     End of options?
+         BE    PARSOPOK       Yes, done.
+         LA    R1,8(,R3)      Assume no blank found.
+         TRT   0(8,R3),FINDBLNK Find the first blank.
+         SR    R1,R3          Get length of option
+         BCTR  R1,0           Prepare for EXecute.
+         LA    R2,PARSOPTN-1  Get number of options in table - 1.
+         LA    R4,PARSOPTB    Get table address.
+PARSOPFN CLM   R1,B'0001',8(R4)  Is it long enough?
+         BL    PARSOPFX       No, next!
+         CLC   0(*-*,R4),0(R3) *** EXecuted ***
+         EX    R1,*-6         Is it an abbreviation of this?
+         BNE   PARSOPFX       No, next!
+         L     R1,8(,R4)      Yes, get handler offset.
+         LA    R1,0(R1,R12)   Turn it to an address.
+         BR    R1             Process the option.
+PARSOPFX LA    R4,PARSOPTL(,R4) Try the
+         BCT   R2,PARSOPFN       next option.
+         B     PARSEROP       None of the above, error.
+         SPACE 1
+PARSOPSY OI    WRKFLAG1,WRKF1SYS Remember SYSTEM option.
+         B     PARSOPLP
+         SPACE 1
+PARSOPSE OI    WRKFLAG1,WRKF1SVC Remember SERVICE option.
+         B     PARSOPLP
+PARSOPPE OI    WRKFLAG1,WRKF1PRM Remember PERMANENT option.
+         B     PARSOPLP
+PARSOPEN OI    WRKFLAG1,WRKF1END Remember ENDCMD option.
+         B     PARSOPLP
+PARSOPPU OI    WRKFLAG1,WRKF1PSH Remember PUSH option.
+         B     PARSOPLP
+* Note: VM/CE CMS doesn't yet support immediate commands.  But we want
+*       to let our caller run, so we accept and ignore the IMMCMD
+*       option.
+PARSOPIM OI    WRKFLAG1,WRKF1IMM Remember IMMCMD option.
+         B     PARSOPLP
+         SPACE 1
+PARSOPOK SR    R15,R15        All is well.
+PARSEXIT LTR   R15,R15        Return to
+         BR    R9                caller.
+         SPACE 1
+PARSNONM LINEDIT TEXT='RPSNXL005E No filename specified',DISP=ERRMSG,  *
+               MF=(E,WRKLEDPL)
+         LA    R15,20
+         B     PARSEXIT
+         SPACE 1
+PARSNOPA DS    0H
+PARSEROP DS    0H
+         LINEDIT TEXT='RPSNXL070E Invalid parameter ........',         *
+               SUB=(CHARA,(R3)),DISP=ERRMSG,MF=(E,WRKLEDPL)
+         LA    R15,24
+         B     PARSEXIT
+         SPACE 1
+PARSOPTB DS    0D
+         DC    CL8'SYSTEM  ',AL1(1),AL3(PARSOPSY-RPSNXL) SYstem
+PARSOPTL EQU   *-PARSOPTB
+         DC    CL8'SERVICE ',AL1(1),AL3(PARSOPSE-RPSNXL) SErvice
+         DC    CL8'PERMANEN',AL1(3),AL3(PARSOPPE-RPSNXL) PERManent
+         DC    CL8'ENDCMD  ',AL1(1),AL3(PARSOPEN-RPSNXL) ENdcmd
+         DC    CL8'IMMCMD  ',AL1(1),AL3(PARSOPIM-RPSNXL) IMmdmd
+         DC    CL8'PUSH    ',AL1(0),AL3(PARSOPPU-RPSNXL) Push
+PARSOPTN EQU   (*-PARSOPTB)/PARSOPTL
+         TITLE 'PREPARE - Prepare to load a nucleus extension.'
+PREPARE  DS    0H
+         XC    WRKDSKPL,WRKDSKPL
+         LA    R2,WRKDSKPL
+         USING FSCBD,R2
+         MVC   FSCBFN,WRKMODFN
+         MVC   FSCBFT,=CL8'MODULE'
+         MVC   FSCBFM,=CL2'*'
+         FSSTATE FSCB=WRKDSKPL,ERROR=1  Does the file
+         LTR   R15,R15           exist?
+         BNZ   PREPERNF       No, error.
+         USING FSTD,R1
+         L     R0,FSTLRECL    Get maximum record length
+         ST    R0,WRKBUFLN    Save for buffer.
+         CLI   FSTRECFM,C'F'  Transient-area module?
+         BNE   PREPNTTR       No, done.
+         OI    WRKFLAG1,WRKF1TRN Yes, remember that.
+         OI    WRKFLAG1,WRKF1SYS Transient modules imply SYSTEM.
+         L     R0,FSTLRECL    Transient modules are
+         ST    R0,WRKMODLN       a single record.
+         MVC   WRKMODAD,=A(X'E000')  They load at E000.
+         XC    WRKMODST,WRKMODST  They enter at offset 0000.
+PREPNTTR DS    0H
+         DROP  R1
+         NUCEXT QUERY,NAME=WRKMODNM,MF=(E,WRKNXQPL)  Does it exist?
+         LTR   R15,R15
+         BNZ   PREPNTFN       No, we're good.
+         TM    WRKFLAG1,WRKF1PSH  Install it anyway?
+         BZ    PREPERAL       No, error.
+PREPNTFN DS    0H
+         L     R14,WRKBUFLN   Get buffer
+         LA    R0,7(,R14)        size in
+         SRL   R0,3                 doublewords.
+         DMSFREE DWORDS=(0),ERR=PREPERST,TYPE=USER,TYPCALL=BALR
+         ST    R1,WRKBUFAD    Save buffer address.
+         SPACE 1
+         SR    R15,R15        All is well.
+PREPEXIT LTR   R15,R15        Return to
+         BR    R9                caller.
+         SPACE 1
+PREPERNF LINEDIT TEXT='RPSNXL002E File ........ MODULE * not found',   *
+               SUB=(CHARA,WRKMODFN),                                   *
+               DISP=ERRMSG,MF=(E,WRKLEDPL)
+         LA    R15,28
+         B     PREPEXIT
+         DROP  R2
+         SPACE 1
+PREPERAL LINEDIT TEXT='RPSNXL024E ........ already loaded',            *
+               SUB=(CHARA,WRKMODNM),DISP=ERRMSG,MF=(E,WRKLEDPL)
+         LA    R15,24
+         B     PREPEXIT
+PREPERST LR    R2,R15
+         LINEDIT TEXT='RPSNXL109S Virtual storage capacity exceeded RC=*
+               ........',SUB=(DEC,(R2)),DISP=ERRMSG,MF=(E,WRKLEDPL)
+         LA    R15,104
+         B     PREPEXIT
+         SPACE 1
+         TITLE 'READHDR - Read the MODULE header record from disk.'
+READHDR  DS    0H
+         TM    WRKFLAG1,WRKF1TRN Transient-area module?
+         BO    RHDREXOK       Yes, no header to read.
+         L     R2,WRKBUFAD
+         USING MDREC,R2
+         FSREAD FSCB=WRKDSKPL,RECNO=1,NOREC=1,BUFFER=(R2),             *
+               BSIZE=80,ERROR=1
+         LTR   R15,R15        All ok?
+         BNZ   RHDRIOER       No, error.
+         L     R1,MDLAST      Get end address of module
+         S     R1,MDFIRST        - start address.
+         ST    R1,WRKMODLN    Save module length.
+         L     R1,MDSTART     Get entry address of module
+         S     R1,MDFIRST        - start address.
+         ST    R1,WRKMODNT    Save module entrypoint offset.
+         MVC   WRKMODST,MDSTART   Save module's original start addr.
+         DROP  R2
+RHDREXOK SR    R15,R15
+RHDREXIT LTR   R15,R15
+         BR    R9
+         SPACE 1
+RHDRIOER LA    R2,WRKDSKPL
+         USING FSCBD,R2
+         LR    R3,R15
+         LINEDIT TEXT='RPSNXL104S Error ........ reading file ........ *
+               ........ .. from disk',                                 *
+               SUB=(DEC,(R3),CHARA,FSCBFN,CHARA,FSCBFT,CHARA,FSCBFM),  *
+               DISP=ERRMSG,MF=(E,WRKLEDPL)
+         LA    R15,31
+         B     RHDREXIT
+         DROP  R2
+         TITLE 'LOADMOD - Load the code from the MODULE file.'
+LOADMOD  DS    0H
+         L     R3,WRKMODLN    Get module
+         LA    R0,7(,R3)         size in
+         SRL   R0,3                 doublewords.
+         TM    WRKFLAG1,WRKF1SYS  SYSTEM option?
+         BZ    LDMDUSER       No, use user storage.
+         DMSFREE DWORDS=(0),ERR=LDMDERST,TYPE=USER,TYPCALL=BALR
+         B     LDMDSTOR
+LDMDUSER DMSFREE DWORDS=(0),ERR=LDMDERST,TYPE=NUCLEUS,TYPCALL=BALR
+LDMDSTOR ST    R1,WRKMODAD    Save module address.
+         L     R0,WRKMODNT    Relocate
+         AR    R0,R1             entrypoint
+         ST    R0,WRKMODNT          address.
+         LR    R2,R1
+LDMDLOOP LR    R4,R3          Get remaining module lenth.
+         C     R4,=F'65535'   More than max recln?
+         BNH   *+8            No, skip.
+         L     R4,=F'65535'   Yes, just read that much.
+         FSREAD FSCB=WRKDSKPL,BUFFER=(R2),BSIZE=(R4),RECNO=0,          *
+               ERROR=1
+         LTR   R15,R15        All ok?
+         BNZ   LDMDIOER       No, error
+         A     R2,=F'65535'   Advance read address.
+         S     R3,=F'65535'   Reduce remaining module length.
+         BP    LDMDLOOP       Loop if more to read.
+         SR    R15,R15        All's well!
+LDMDEXIT LTR   R15,R15
+         BR    R9
+         SPACE 1
+LDMDERST LR    R2,R15
+         LINEDIT TEXT='RPSNXL109S Virtual storage capacity exceeded RC=*
+               ........',SUB=(DEC,(R2)),DISP=ERRMSG,MF=(E,WRKLEDPL)
+         LA    R15,104
+         B     LDMDEXIT
+         SPACE 1
+LDMDIOER LA    R2,WRKDSKPL
+         USING FSCBD,R2
+         LR    R3,R15
+         LINEDIT TEXT='RPSNXL104S Error ........ reading file ........ *
+               ........ .. from disk',                                 *
+               SUB=(DEC,(R3),CHARA,FSCBFN,CHARA,FSCBFT,CHARA,FSCBFM),  *
+               DISP=ERRMSG,MF=(E,WRKLEDPL)
+         LA    R15,31
+         DROP  R2
+         B     LDMDEXIT
+         TITLE 'READMAP - Read the loader map from disk.'
+READMAP  DS    0H
+         L     R2,WRKBUFAD    Get buffer address
+         L     R4,WRKBUFLN       and length.
+         FSREAD FSCB=WRKDSKPL,BUFFER=(R2),BSIZE=(R4),RECNO=0,          *
+               ERROR=1        We don't care if this works
+         SR    R15,R15        All's well!
+         LTR   R15,R15
+         BR    R9
+         TITLE 'READRLD - Read the relocation dictionary from disk.'
+READRLD  DS    0H
+         L     R2,WRKBUFAD    Get buffer address
+         L     R4,WRKBUFLN       and length.
+         FSREAD FSCB=WRKDSKPL,BUFFER=(R2),BSIZE=(R4),RECNO=0,          *
+               ERROR=1
+         LTR   R15,R15        All ok?
+         BNZ   RDRLIOER       No, error
+         ST    R0,WRKRLDLN    Save RLD record length.
+RDRLEXOK SR    R15,R15        All's well!
+RDRLEXIT LTR   R15,R15
+         BR    R9
+         SPACE 1
+RDRLIOER C     R15,=F'12'     End-of-file?
+         BE    RDRLEXOK       Yes, just no RLD record.
+         LA    R2,WRKDSKPL
+         USING FSCBD,R2
+         LR    R3,R15
+         LINEDIT TEXT='RPSNXL104S Error ........ reading file ........ *
+               ........ .. from disk',                                 *
+               SUB=(DEC,(R3),CHARA,FSCBFN,CHARA,FSCBFT,CHARA,FSCBFM),  *
+               DISP=ERRMSG,MF=(E,WRKLEDPL)
+         LA    R15,31
+         DROP  R2
+         B     RDRLEXIT
+         TITLE 'RELOC - Relocate all adcons in the loaded module.'
+RELOC    DS    0H
+         TM    WRKFLAG1,WRKF1DBG  Are we debugging?
+         BZ    RELONHDR       No, skip.
+         AGO   .RELO01
+         LINEDIT TEXT='RPSNXL901D RLDitem_ ItemAddr ValueBef OldBase_ L*
+               oadAddr ValueAft',                                      *
+               DISP=ERRMSG,                                            *
+               MF=(E,WRKLEDPL)
+.RELO01  ANOP  ,
+RELONHDR DS    0H
+         L     R2,WRKBUFAD    Get relocation data address.
+         L     R3,WRKRLDLN    Get number of
+         SRL   R3,2              RLD items for loop.
+         S     R3,=F'1'       -1 for looping.
+         BNP   RELOEXOK       It was 0: No items.
+         L     R6,WRKMODST    Get original starting address.
+         L     R7,WRKMODLN    Get module length.
+         L     R8,WRKMODAD    Get relocated starting address.
+RELOLOOP L     R4,0(,R2)      Get RLD item
+         SRDL  R4,24             length and
+         SRL   R5,8                 original address.
+         SR    R5,R6          Convert to offset.
+         BM    RELOSKIP       Not inside MODULE, skip.
+         CR    R5,R7          Inside MODULE?
+         BH    RELOSKIP       No, skip.
+         AR    R5,R8          Get location to relocate.
+         N     R4,=X'00000003' Isolate length.
+         IC    R4,RELOMSKS(R4) Convert length to bitmask.
+         SR    R0,R0          Get the original
+         ICM   R0,*-*,0(R5)      address
+         EX    R4,*-4               from GENMOD.
+         ST    R0,WRKTEMP1    Save for message.
+         S     R0,WRKMODST    Turn it into an offset.
+         BM    RELOSKIP       Not inside MODULE, skip.
+         CR    R0,R7          Inside MODULE?
+         BH    RELOSKIP       No, skip.
+         LR    R1,R8          Get relocation distance.
+         ST    R1,WRKTEMP2    Save for message.
+         AR    R0,R1          Relocate the address.
+         ST    R0,WRKTEMP3    Save for message.
+         STCM  R0,*-*,0(R5)   Put it
+         EX    R4,*-4            back.
+         TM    WRKFLAG1,WRKF1DBG  Are we debugging?
+         BZ    RELONDBG       No, skip.
+         AGO   .RELO02
+         STM   R7,R9,WRKTEMP4
+         LM    R7,R9,WRKTEMP1
+*              RLDitem_ ItemAddr ValueBef OldBase_ LoadAddr ValueAft
+         LINEDIT TEXT='RPSNXL902D ........ ........ ........ ........ .*
+               ....... ........',                                      *
+               SUB=(HEXA,0(R2),HEX,(R5),HEX,(R7),HEX,(R6),HEX,(R8),    *
+               HEX,(R9)),                                              *
+               DISP=ERRMSG,                                            *
+               MF=(E,WRKLEDPL)
+         LM    R7,R9,WRKTEMP4
+.RELO02  ANOP  ,
+         B     RELONDBG
+RELOSKIP DS    0H
+         TM    WRKFLAG1,WRKF1DBG  Are we debugging?
+         BZ    RELONDBG       No, skip.
+         AGO   .RELO03
+         ST    R7,WRKTEMP4
+         L     R7,WRKTEMP1
+         LINEDIT TEXT='RPSNXL903D ........ ........ ........ skipped', *
+               SUB=(HEXA,0(R2),HEX,(R5),HEX,(R7)),                     *
+               DISP=ERRMSG,                                            *
+               MF=(E,WRKLEDPL)
+         L     R7,WRKTEMP4
+.RELO03  ANOP  ,
+RELONDBG DS    0H
+         LA    R2,4(,R2)      Go do the
+         BCT   R3,RELOLOOP       next one.
+RELOEXOK DS    0H
+         SR    R15,R15        All done!
+         LTR   R15,R15
+         BR    R9
+RELOMSKS DC    AL1(B'0001',B'0011',B'0111',B'1111')
+         TITLE 'REGISTER - Register the nucleus extension.'
+REGISTER DS    0H
+         L     R2,WRKMODNT
+         L     R3,WRKMODAD
+         L     R4,WRKMODLN
+         NUCEXT SET,NAME=WRKMODNM,                                     *
+               ENDCMD=(WRKFLAG1,WRKF1END),                             *
+               ENTRY=(R2),                                             *
+               INTTYPE=NONE,                                           *
+               KEY=(WRKFLAG1,WRKF1SYS),                                *
+               ORIGIN=((R3),(R4)),                                     *
+               PERM=(WRKFLAG1,WRKF1PRM),                               *
+               SERVICE=(WRKFLAG1,WRKF1SVC),                            *
+               SYSTEM=(WRKFLAG1,WRKF1SYS),                             *
+               MF=(E,WRKNXSPL),                                        *
+               ERROR=1
+         LTR   R15,R15        All ok?
+         BNZ   REGINXER       No, error
+         XC    WRKMODAD,WRKMODAD The module storage isn't ours anymore.
+         SR    R15,R15
+REGIEXIT LTR   R15,R15
+         BR    R9
+         SPACE 1
+REGINXER LR    R2,R15
+         LINEDIT TEXT='RPSNXL009E NUCEXT error ........',              *
+               SUB=(DEC,(R2)),DISP=ERRMSG,MF=(E,WRKLEDPL)
+         LA    R15,9
+         B     REGIEXIT
+         TITLE 'Constants.'
+FINDBLNK DC    256X'00'       TRT table to find blanks in strings.
+         ORG   FINDBLNK+C' '
+         DC    X'01'
+         ORG   ,
+         TITLE 'WRKSECT - Working storage.'
+WRKSECT  DSECT ,
+WRKMODNM DS    CL8            Module name.
+WRKMODFN DS    CL8            File name.
+WRKFLAG1 DS    X              Flags
+WRKF1SYS EQU   X'80'          - SYSTEM option specified.
+WRKF1SVC EQU   X'40'          - SERVICE option specified.
+WRKF1PRM EQU   X'20'          - PERMANENT option specified.
+WRKF1END EQU   X'10'          - ENDCMD option specified.
+WRKF1IMM EQU   X'08'          - IMMCMD option specified.
+WRKF1TRN EQU   X'04'          - Transient-area module.
+WRKF1PSH EQU   X'02'          - PUSH option specified.
+WRKF1DBG EQU   X'01'          - Are we debugging?
+         SPACE 1
+WRKBUFAD DS    A              Buffer address.
+WRKBUFLN DS    F              Buffer size.
+WRKMODST DS    A              Module starting address from disk.
+WRKMODND DS    A              Module ending address from disk.
+WRKMODAD DS    A              Module address.
+WRKMODLN DS    F              Module size.
+WRKMODNT DS    A              Module entrypoint.
+WRKRLDLN DS    F              Size of RLD record in WRKBUFAD.
+WRKTEMP1 DS    F              Temporary storage
+WRKTEMP2 DS    F              Temporary storage
+WRKTEMP3 DS    F              Temporary storage
+WRKTEMP4 DS    F              Temporary storage
+WRKTEMP5 DS    F              Temporary storage
+WRKTEMP6 DS    F              Temporary storage
+         DS    0D
+WRKDSKPL FSCB  ,              File I/O plist.
+WRKPLST1 DS    0D             Assorted plists, sharing space.
+WRKNXSPL NUCEXT SET,MF=L      NUCEXT SET plist.
+         ORG   WRKPLST1
+WRKNXQPL NUCEXT QUERY,MF=L    NUCEXT QUERY plist.
+         ORG   ,
+WRKPLSTS EQU   WRKPLST1,*-WRKPLST1
+         SPACE 1
+WRKLEDPL LINEDIT MF=L,MAXSUBS=5  LINEDIT plist
+         DS    0D
+WRKLEN   EQU   *-WRKSECT
+WRKLEND  EQU   (WRKLEN+7)/8
+         SPACE 3
+* Flags in SCBUFLAG:
+SCBUFDBG EQU   X'80'          - Debugging is on.
+         TITLE 'MDREC - MODULE file header record from DMSZAP.'
+MDREC    DSECT ,
+MDNUCON  DS    0XL40          Mapped by NUCON, starting at STRTADDR
+MDSTART  DS    A              STRTADDR Start location
+MDFIRST  DS    A              FRSTLOC  Beginning location in storage
+MDLAST   DS    A              LASTLOC  Ending location in storage
+MDLOCCNT DS    F              LOCCNT   Location counter
+         DS    F              LDRADDR
+         DS    F              LDRRTCD
+         DS    D              PSW
+MDLDRFGS DS    F              LDRFLAGS Module flag
+MDLFLAG1 EQU   MDLDRFGS+0
+MDL1NOER EQU   X'04'          NOERASE
+MDL1SYS  EQU   X'01'          SYSTEM
+         SPACE 1
+MDLFLAG2 EQU   MDLDRFGS+1
+MDL2STR  EQU   X'80'          STRINIT  Issue STRINIT on load?
+         SPACE 1
+         DS    F              PRHOLD
+MDLDRENT DS    H              TBENT    # Loader Table Entries
+         SPACE 1
+         DS    X              UNRES
+MDMODFLG DS    X              MODFLGS  Module flag
+MDMNOMAP EQU   X'80'          NOMAPFLG Indicates 'No Load Map'
+MDMCLEAR EQU   X'40'          CLEAROP  CLEAR option flag
+MDMGNDOS EQU   X'20'          MODGNDOS Generated with DOS option
+MDMGNALL EQU   X'10'          MODGNALL Generated with ALL option
+* NUCON mapping ends here.
+         ORG   MDREC+80       Record on disk is 80 bytes.
+MDRECLEN EQU   *-MDREC        length in bytes
+         TITLE 'DSECTs.'
+         NUCON ,
+         FSCBD ,
+         FSTD  ,
+         REGEQU ,
+         SCBLOCK ,
+         END   ,
