@@ -1,0 +1,7 @@
+         MACRO ,
+&LABEL   $CALL &TARGET
+&LABEL   L     R15,=V(&TARGET)  Get entrypoint.
+         S     R15,=V(PLUNXBEG)  Relocate
+         A     R15,PRMPLUNG         it.
+         BALR  R14,R15        Call it.
+         MEND  ,

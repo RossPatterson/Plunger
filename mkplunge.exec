@@ -1,9 +1,62 @@
 /* MKPLUNGE - Build the Pipe cleaner. */
+Arg Operands '(' Options
+If Operands <> '' | Word(Operands, 1) = '?' then Signal Usage
 Signal on Error
-'VMFASM RPSNXL PLUNGER DISK RENT RLD'
+
+Version = '0.0.3'
+OptDebug = 0
+Do While Options <> ''
+   Parse var Options Option Options
+   Select
+      When Option = 'DEBUG' then OptDebug = 1
+      When Option = 'NODEBUG' then OptDebug = 0
+      Otherwise Signal Usage
+   End
+End
+
+Signal off Error
+'SET CMSTYPE HT'
+'ERASE PLUNMAC MACLIB A'
+'ERASE PLUCONFG COPY A'
+'SET CMSTYPE RT'
+Signal on Error
+C.0 = 4
+C.1 = Left("         GBLB  &DEBUG         Are we debugging?", 80)
+C.2 = Left("&DEBUG   SETB " OptDebug, 80)
+C.3 = Left("         GBLC  &PLUVERS       Version number", 80)
+C.4 = Left("&PLUVERS SETC '" || Version || "'", 80)
+'EXECIO' C.0 'DISKW PLUCONFG COPY A 1 F 80 (FINIS STEM C.'
+'VMFMAC PLUNMAC PLUNGER'
+'ERASE PLUCONFG COPY A'
+
+'VMFASM PLUCMD PLUNGER DISK RENT RLD'
+'VMFASM PLUMAI PLUNGER DISK'
+'VMFASM PLUNXB PLUNGER DISK RENT RLD'
+'VMFASM PLUNXE PLUNGER DISK RENT RLD'
+'VMFASM PLUZAP PLUNGER DISK RENT RLD'
+'VMFASM RPSNXL DMSLCL  DISK RENT RLD'
+'VMFASM RPSWRS DMSLCL  DISK RENT'
+
+'LOAD PLUNXB PLUCMD PLUZAP RPSNXL PLUNXE PLUMAI ( CLEAR NOAUTO NOLIBE RESET PLUMAIN'
+'GENMOD PLUNGER ( SYSTEM FROM PLUNXB'
+'COPY LOAD MAP A PLUNGER MAP A ( OLDD REPL'
+'ERASE LOAD MAP A'
+Say 'PLUNGER MODULE generated.'
+
+'COPY RPSWRS TEXT A WITHSTEM = = (OLDD REPL'
+'ERASE RPSWRS TEXT A'
+'LOAD WITHSTEM (CLEAR NOAUTO NOLIBE'
+'COPY LOAD MAP A WITHSTEM MAP A ( OLDD REPL'
+'ERASE LOAD MAP A'
+Say 'WITHSTEM TEXT generated.'
 
 Exit 0
 
 Error:
 Say 'Error' RC 'in line' SigL':' SourceLine(SigL)
 Exit RC
+
+Usage:
+Say 'Syntax: MKPLUNGE [ ( [NO]DEBUG ]'
+Say 'Defaults: NODEBUG HRC100 AUTO'
+Exit 1

@@ -1,0 +1,756 @@
+WRS      TITLE 'RPSWRS WITHSTEM - Main.'
+*
+*               .---------------------.
+*               V                     |
+* >>--WITHSTEM----.-------------------.--.--COMMAND--.--string--><
+*                 |--INPUT--stem.---|    |--CMS------|
+*                 '--OUTPUT--stem.--'    '--subcom---'
+*
+* At least one of INPUT or OUTPUT is required, and each may only
+* be specified once.  The command environment is handled a la Rexx,
+* except that the ADDRESS PSW form is not accepted.
+*
+* NOTE: This module assumes that no word in the EPLIST argument
+*       string is more than 256 characters long.  And EXECCOMM
+*       expects the same of all variable names.
+*
+RPSWRS   CSECT ,
+         USING RPSWRS,R12
+         USING USERSAVE,R13
+         USING NUCON,0
+         B     *+12
+         DC    CL8'RPSWRS'    Eyecatcher.
+         STM   R0,R15,USERSAVE
+         LR    R3,R0          Preserve EPLIST.
+         LR    R4,R1          Preserve PLIST.
+* Sigh ... HRC380D* added USERSAVE, but doesn't set the flag.
+*        TM    USEMFLG,USESCBLK  Do we have an SCBLOCK?
+*        BZ    ERRNONX        No, error.
+         LTR   R2,R2          Were we passed an SCBLOCK?
+         BZ    ERRNONX        No, error.
+         USING SCBLOCK,R2
+         CLC   SCBNAME,0(R4)  Does it look like ours?
+         BNE   ERRNONX        No, error.
+         C     R12,SCBENTR    Does it look like ours?
+         BNE   ERRNONX        No, error.
+         DROP  R2
+         LA    R0,(WRKSIZE+7)/8  Get
+         DMSFREE DWORDS=(0)         work area.
+         LR    R11,R1
+         USING WRKAREA,R11
+         LR    R0,R11         Clear
+         L     R1,=A(WRKSIZE)    out
+         SR    R15,R15             work
+         MVCL  R0,R14                 area.
+         SPACE 1
+         LR    R0,R3          Restore EPLIST.
+         LR    R1,R4          Restore PLIST.
+         BAL   R14,PARSECMD   Parse the plists
+         BNZ   EXITERR        Error, exit.
+         CLC   WRKIVNNA,WRKOVNNA  Any in/output specs?
+         BE    ERNOSPEC       No, error
+         BAL   R14,SETUP      Set up to capture I/O.
+         BNZ   EXITERR        Error, exit.
+         SPACE 3
+         LA    R2,WRKCMDEP
+         USING EPLIST,R2
+         MVC   EPLCMD,WRKCMDTP  Set command address,
+         MVC   EPLARGBG,WRKCMDW2  Set arg starting address.
+         L     R1,WRKCMDA     Get arg
+         A     R1,WRKCMDA+4      ending
+         ST    R1,EPLARGND             address.
+         SPACE 3
+         LA    R0,EPLIST      Get
+         L     R1,WRKCMDTP       plists.
+         ICM   R1,B'1000',=X'01'  Assume a la ADDRESS COMMAND.
+         CLC   WRKSUBCM,=CL8'COMMAND' Guess right?
+         BE    RUNCMD         Yes, cool.
+         LA    R1,WRKSUBCM    No, use subcom.
+         MVC   EPLARGBG,EPLCMD  Subcoms get full command.
+         ICM   R1,B'1000',=X'02'  Subcommand call
+RUNCMD   DS    0H
+         SVC   202            Issue command.
+         DC    AL4(1)
+         DROP  R2
+         ST    R15,WRKCMDRC   Save return code.
+         BAL   R14,TEARDOWN   Return normal I/O.
+         BNZ   EXITERR        Error, exit.
+         L     R15,WRKCMDRC   Get command's return code.
+EXIT     DS    0H
+         LR    R2,R15         Preserve RC.
+         LR    R1,R11         Return
+         LA    R0,(WRKSIZE+7)/8  work
+         DMSFRET LOC=(1),DWORDS=(0)  area.
+         LR    R15,R2         Return
+         LM    R0,R14,USERSAVE   to
+         BR    R14                  caller.
+         SPACE 3
+EXITERR  DS    0H
+         LA    R15,1000(,R15) Bump RC past most commands' RCs.
+         B     EXIT
+         SPACE 3
+ERRNONX  DS    0H
+         BAL   R14,MSG005     "Not loaded as NUCEXT".
+         B     EXIT
+         SPACE 3
+ERNOSPEC DS    0H
+         BAL   R14,MSG002     "Missing information"
+         B     EXIT
+         TITLE 'GETWORD - Get next word in a string.'
+GETWORD  DS    0H
+*
+*        Input:
+*              R3 = A(str)
+*              R4 = F'stlren'
+*        Output:
+*              R0 = A(word)
+*              R1 = F'wordlen'
+*              R3 = A(remaining str)
+*              R4 = F'remaining strlen'
+*
+         STM   R0,R15,WRKGWSAV
+         LTR   R4,R4          Any input left?
+         BNP   GETWERND       No, error.
+         CLI   0(R3),C' '     At word start already?
+         BNE   GETWATST       Yes, no leading blanks.
+         SPACE 3
+         LR    R5,R4          Get length
+         SH    R5,=H'1'          -1 for EX.
+         BM    GETWERND       Nothing left, error.
+         TRT   0(*-*,R3),GETWSKPB  Skip leading
+         EX    R5,*-6               blanks.
+         BZ    GETWERND       Only blanks found, error.
+         LA    R2,0(,R1)      Get length
+         SR    R2,R3             of skipped blanks.
+         SR    R4,R2          Get remaining string length
+         LA    R3,0(,R1)         and address.
+         SPACE 3
+GETWATST DS    0H
+         LR    R5,R4          Get length
+         SH    R5,=H'1'          -1 for EX.
+         BM    GETWERND       Nothing left, error.
+         TRT   0(*-*,R3),GETWFNDB  Find end
+         EX    R5,*-6               of word.
+         ST    R3,WRKGWSAV    Pass word address to caller.
+         LA    R2,0(,R1)      Get length
+         SR    R2,R3             of word.
+         ST    R2,WRKGWSAV+4  Pass to caller.
+         AR    R3,R2          Point past word.
+         SR    R4,R2          Account for advancement.
+         STM   R3,R4,WRKGWSAV+12  Update input addr/len.
+         SR    R15,R15
+         SPACE 3
+GETWEXIT DS    0H
+         LM    R0,R14,WRKGWSAV
+         LTR   R15,R15
+         BR    R14
+         SPACE 3
+GETWERND DS    0H
+         LA    R15,1          No data left in string.
+         B     GETWEXIT
+         SPACE 3
+GETWFNDB DC    256X'00'       TRT table to find blanks
+         ORG   GETWFNDB+C' '
+         DC    X'01'
+         ORG   ,
+         SPACE 3
+GETWSKPB DC    256X'01'       TRT table to skip blanks
+         ORG   GETWSKPB+C' '
+         DC    X'00'
+         ORG   ,
+         TITLE 'PARSECMD - Parse the command line.'
+PARSECMD DS    0H
+*
+*        R0 = A(EPLIST)
+*        R1 = A(tokenized PLIST)
+*
+*        We advance both plists so we can pass both to the called cmd.
+*
+         PUSH  USING
+         STM   R0,R15,WRKPRSSV
+         LR    R5,R0          Get EPLIST
+         LR    R6,R1             and PLIST.
+         USING EPLIST,R5
+         LA    R6,8(,R6)      Point past our name.
+         L     R7,EPLARGBG    Ditto EPLIST.
+         LR    R3,R7          Get address
+         L     R4,EPLARGND       and length
+         SR    R4,R3                of remaining args.
+PARSLOOP DS    0H
+         CLI   0(R6),X'FF'    End of plist?
+         BE    PARSERMI       Yes, error.
+         LA    R8,WRKIVNNA    Assume INPUT.
+         CLC   =CL8'INPUT',0(R6)  "INPUT stem."?
+         BE    PARSINOU       Yes, do it.
+         LA    R8,WRKOVNNA    Assume OUTPUT.
+         CLC   =CL8'OUTPUT',0(R6)  "OUTPUT stem."?
+         BE    PARSINOU       Yes, do it.
+         B     PARSLPND       None of the above, done w/ options.
+         SPACE 3
+PARSINOU DS    0H
+         CLC   0(4,R8),=A(0)  Did we already do this one?
+         BNE   PARSERDO       Yes, error.
+         CLI   8(R6),X'FF'    Any "stem."?
+         BE    PARSERMS       No, error.
+         BAL   R14,GETWORD    Skip option name.
+         LA    R6,8(,R6)      Ditto TPL.
+         BAL   R14,GETWORD    Get "stem."
+         LA    R6,8(,R6)      Ditto TPL.
+         STM   R0,R1,0(R8)    Save addr/len of stem name.
+         B     PARSLOOP       Next!
+         SPACE 3
+PARSLPND DS    0H
+         CLI   0(R6),X'FF'    End of plist?
+         BE    PARSERMI       Yes, error.
+         MVC   WRKSUBCM,0(R6) Get environment name.
+         MVC   WRKSUBFN,=8X'FF'  Add fence.
+         BAL   R14,GETWORD    Skip environment name.
+         LA    R6,8(,R6)      Ditto TPL.
+         CLI   0(R6),X'FF'    End of plist?
+         BE    PARSERMI       Yes, error.
+         BAL   R14,GETWORD    Get 1st word of command.
+         LR    R14,R0         Get address
+         AR    R14,R1            of words after 1st.
+         ST    R14,WRKCMDW2   Save for later.
+         L     R1,EPLARGND    Get length
+         SR    R1,R0             of full command.
+         STM   R0,R1,WRKCMDA  Save addr/len of command.
+         ST    R6,WRKCMDTP    Save tokenlist plist addr.
+         SR    R15,R15        All is well.
+PARSEXIT DS    0H
+         LM    R0,R14,WRKPRSSV
+         LTR   R15,R15
+         BR    R14
+         SPACE 3
+PARSERMI BAL   R14,MSG002     "Missing information"
+         B     PARSEXIT
+         SPACE 3
+PARSERMS BAL   R14,MSG001     "Missing value"
+         B     PARSEXIT
+         SPACE 3
+PARSERDO BAL   R14,MSG003     "Duplicate option"
+         B     PARSEXIT
+         POP   USING
+         TITLE 'SETUP - Initialize capturing I/O.'
+SETUP    DS    0H
+         STM   R0,R15,WRKSETSV
+         SPACE 3
+         SUBCOM QUERY,NAME='EXECCOMM'  Is there
+         LTR   R15,R15           an EXECCOMM for us to use?
+         BNZ   MSG007         No, error.
+         SPACE 3
+         CLC   =A(0),WRKIVNNA  Is there an input spec?
+         BE    SETUNOIN       No, skip.
+         MVC   WRKSACRD,ADMSCRD  Save the original ADMSCRD
+         LA    R3,WTRDSVC     Set up our replacement.
+         NUCEXT SET,NAME='WAITRD',ENTRY=(R3),ORIGIN=((R12),0),         *
+               SYSTEM=YES,UWORD=(R11)
+         LTR   R15,R15        Any problems?
+         BNZ   SETUERRS       Yes, error.
+         LM    R1,R2,WRKIVNNA  Get "stem." addr/len.
+         BCTR  R2,0
+         MVC   WRKSTMNM(*-*),0(R1)  Make
+         EX    R2,*-6            "stem.0"
+         LA    R1,WRKSTMNM(R2)       variable
+         MVI   1(R1),C'0'               name.
+         LA    R2,2(,R2)      Get its length.
+         SPACE 3
+         XC    WRKSHVEP,WRKSHVEP  Clear EXECCOMM EPLIST
+         XC    WRKSHVBS,WRKSHVBS     and SHVBLOCKs.
+         LA    R5,WRKSHVBS    -> SHVBLOCKs.
+         USING SHVBLOCK,R5
+         SPACE 3
+         MVI   SHVCODE,SHVFETCH  Fetch variable value
+         LA    R0,WRKSTMNM    Set "stem.0" name
+         ST    R0,SHVNAMA        address
+         ST    R2,SHVNAML           and length.
+         LA    R1,WRKQUAD     Set value buffer
+         ST    R1,SHVVALA        address
+         MVC   SHVBUFL,=F'16'       and length.
+         SPACE 3
+         LA    R2,WRKSHVEP    -> EPLIST
+         USING EPLIST,R2
+         LA    R1,=CL8'EXECCOMM'  Set command
+         ST    R1,EPLCMD             name.
+         LA    R0,WRKSHVBS    Point to
+         ST    R0,EPLUWORD       SHVBLOCK chain.
+         LR    R0,R2          Pass EPLIST to EXECCOMM.
+         ICM   R1,B'1000',=X'02'  Indicate SUBCOM.
+         SVC   202            Get variable.
+         DC    AL4(1)
+         DROP  R2
+         LTR   R15,R15        Success?
+         BNZ   SETUERI0       No, error.
+         L     R1,SHVVALL     Get result length.
+         BCTR  R1,0
+         PACK  WRKDOUB,WRKQUAD(*-*)
+         EX    R1,*-6
+         CVB   R1,WRKDOUB     Get it in binary.
+         ST    R1,WRKIVNSM    Save for making "stem.n".
+SETUNOIN DS    0H
+         SPACE 3
+         CLC   =A(0),WRKOVNNA  Is there an output spec?
+         BE    SETUNOOU       No, skip.
+         MVC   WRKSACWR,ADMSCWR  Save the original ADMSCWR.
+         LA    R3,TYPLSVC     Set up our replacement.
+         NUCEXT SET,NAME='TYPLIN',ENTRY=(R3),ORIGIN=((R12),0),         *
+               SYSTEM=YES,UWORD=(R11)
+         LTR   R15,R15        Any problems?
+         BNZ   SETUERRS       Yes, error.
+         LM    R1,R2,WRKOVNNA  Get "stem." addr/len.
+         BCTR  R2,0
+         MVC   WRKOV0NM(*-*),0(R1)  Make
+         EX    R2,*-6            "stem.0"
+         LA    R3,WRKOV0NM(R2)       variable
+         MVI   1(R3),C'0'               name.
+         LA    R2,2(,R2)      Get its length.
+         LA    R1,WRKOV0NM    Save addr
+         STM   R1,R2,WRKOV0NA    /len for later.
+         SPACE 3
+         XC    WRKSHVEP,WRKSHVEP  Clear EXECCOMM EPLIST
+         XC    WRKSHVBS,WRKSHVBS     and SHVBLOCKs.
+         LA    R5,WRKSHVBS    -> SHVBLOCKs.
+         USING SHVBLOCK,R5
+         SPACE 3
+         MVI   SHVCODE,SHVSTORE  Set variable value
+         LA    R0,WRKOV0NM    Set "stem.0" name
+         ST    R0,SHVNAMA        address
+         ST    R2,SHVNAML           and length.
+         MVI   WRKQUAD,C'0'   Set it to "0".
+         LA    R1,WRKQUAD     Set value buffer
+         ST    R1,SHVVALA        address
+         MVC   SHVVALL,=F'1'        and length.
+         SPACE 3
+         LA    R2,WRKSHVEP    -> EPLIST
+         USING EPLIST,R2
+         LA    R1,=CL8'EXECCOMM'  Set command
+         ST    R1,EPLCMD             name.
+         LA    R0,WRKSHVBS    Point to
+         ST    R0,EPLUWORD       SHVBLOCK chain.
+         LR    R0,R2          Pass EPLIST to EXECCOMM.
+         ICM   R1,B'1000',=X'02'  Indicate SUBCOM.
+         SVC   202            Get variable.
+         DC    AL4(1)
+         DROP  R2
+         LTR   R15,R15        Success?
+         BNZ   SETUERO0       No, error.
+SETUNOOU DS    0H
+         SPACE 3
+         CLC   =A(0),WRKIVNNA Is there an input spec?
+         BE    *+12           No, skip.
+         LA    R1,WTRDBALR    Take over
+         ST    R1,ADMSCRD        TYPCALL=BALR too.
+         CLC   =A(0),WRKOVNNA  Is there an output spec?
+         BE    *+12           No, skip.
+         LA    R1,TYPLBALR    Take over
+         ST    R1,ADMSCWR        TYPCALL=BALR too.
+         SPACE 3
+         SR    R15,R15
+SETUEXIT DS    0H
+         LM    R0,R14,WRKSETSV
+         LTR   R15,R15
+         BR    R14
+         SPACE 3
+SETUERRS DS    0H
+         BAL   R14,MSG006      "Error <rc> from NUCEXT <name>".
+         B     SETUEXIT
+         SPACE 3
+SETUERI0 DS    0H
+         BAL   R14,MSG004     "Error from EXECCOMM"
+         B     SETUEXIT
+         SPACE 3
+SETUERO0 DS    0H
+         BAL   R14,MSG004     "Error from EXECCOMM"
+         B     SETUEXIT
+         TITLE 'STEMNBLD - Build REXX stem variable name.'
+STEMNBLD DS    0H
+*
+*        Input:   R0 =  Stem suffix (n in "stem.n")
+*                 R1 -> Stem prefix ("stem.") len\addr
+*
+*        Output:  R0 = Length of "stem.n" in temp buffer.
+*                 R1 = Address of "stem.n" in temp buffer.
+*
+*        NOTE: The output buffer is reused by each call.
+*
+         STM   R0,R15,WRKSBNSV
+         L     R14,0(,R1)     Address of "stem.".
+         L     R15,4(,R1)     Length of "stem.".
+         ST    R15,WRKSTMNL   Prep to pass to caller
+         BCTR  R15,0
+         MVC   WRKSTMNM(*-*),0(R14) Copy "stem."
+         EX    R15,*-6                to result.
+         SPACE 1
+         LA    R2,WRKSTMNM+1(R15) Point past end of WRKSTMNA
+         LA    R1,L'STEMPAT-1(R2) (In case EDMK gets RC=0)
+         CVD   R0,WRKDOUB     Convert binary to packed
+         MVC   0(L'STEMPAT,R2),STEMPAT  Set pattern
+         EDMK  0(L'STEMPAT,R2),WRKDOUB  EDIT with pattern
+         LA    R15,L'STEMPAT-1(R2) To end of the number
+         SR    R15,R1         Get number length - 1
+         MVC   0(*-*,R2),0(R1)  Move the suffix number
+         EX    R15,*-6
+         SPACE 1
+         LA    R0,WRKSTMNM    Pass varname addr to caller.
+         LA    R1,1(,R15)     Pass varname
+         A     R1,WRKSTMNL       length to caller.
+         LM    R2,R14,WRKSBNSV+8
+         SR    R15,R15
+         LTR   R15,R15
+         BR    R14
+         SPACE 3
+STEMPAT  DC    X'40202020202020202020202020202120' EDMK Mask
+         TITLE 'TEARDOWN - Terminate capturing I/O.'
+TEARDOWN DS    0H
+         STM   R0,R15,WRKTEASV
+         SPACE 3
+         CLC   =A(0),WRKIVNNA  Is there an input spec?
+         BE    TEARNOIN       No, skip.
+         NUCEXT CLR,NAME='WAITRD'
+TEARNOIN DS    0H
+         OC    WRKSACRD,WRKSACRD  Did we save ADMSCRD?
+         BZ    *+10            No, skip.
+         MVC   ADMSCRD,WRKSACRD  Yes, restore it.
+         XC    WRKSACRD,WRKSACRD  Clear it.
+         SPACE 3
+         CLC   =A(0),WRKOVNNA  Is there an output spec?
+         BE    TEARNOOU       No, skip.
+         NUCEXT CLR,NAME='TYPLIN'
+TEARNOOU DS    0H
+         OC    WRKSACWR,WRKSACWR  Did we save ADMSCWR?
+         BZ    *+10            No, skip.
+         MVC   ADMSCWR,WRKSACWR  Yes, restore it.
+         XC    WRKSACWR,WRKSACWR  Clear it.
+         SPACE 3
+         SR    R15,R15
+         LM    R0,R14,WRKTEASV
+         LTR   R15,R15
+         BR    R14
+         TITLE 'TYPLIN - Capture command output.'
+TYPLSVC  DS    0H
+*
+*        Called as NUCEXT
+*
+*        Input:
+*             R1 -> CL8'TYPLIN'
+*                   AL1(1),AL3(msg)
+*                   AL1(flag1,flag2),H'msglen'
+*             R2 -> SCBLOCK
+*             R12 = A(TYPLSVC)
+*             R14 = return address
+*             R15 = A(TYPLSVC)
+*
+         USING SCBLOCK,R2
+         L     R12,SCBXORG    Get base address.
+         L     R11,SCBWKWRD   Get workarea addss.
+         DROP  R2
+         STM   R0,R15,WRKTYPSV
+         B     TYPLGO
+         SPACE 3
+TYPLBALR DS    0H
+*
+*        Called via BALR
+*
+*        Input:
+*             R1 -> CL8'xxx'  Ignored
+*                   AL1(1),AL3(msg)
+*                   AL1(flag1,flag2),H'msglen'
+*             R14 = return address
+*             R15 = A(TYPLBALR)
+*
+         PUSH  USING
+         USING NUCON,0
+         USING TYPLBALR,R15
+         ST    R1,MCKOPSW      Save R1,
+         STM   R11,R12,PGMOPSW    R11,R12 for a moment.
+         NUCEXT QUERY,NAME='TYPLIN'
+         DROP  R15            NUCEXT clobbers R15
+         USING SCBLOCK,R1
+         L     R12,SCBXORG    Get base address.
+         L     R11,SCBWKWRD   Get workarea addss.
+         STM   R0,R15,WRKTYPSV   Save regs
+         L     R1,MCKOPSW     Get R1 back.
+         ST    R1,WRKTYPSV+(1*4)  Fix R1,
+         MVC   WRKTYPSV+(11*4)(8),PGMOPSW    R11, R12
+         B     TYPLGO
+         POP   USING
+         SPACE 3
+TYPLGO   DS    0H
+*
+*        Input:
+*             R1 -> CL8'???'  Ignored
+*                   AL1(1),AL3(msg)
+*                   AL1(flag1,flag2),H'msglen'
+*             R11 = WRKAREA address
+*             R12 = base address
+*             R14 = return address
+*
+         SPACE 3
+         L     R2,8(,R1)      Get message
+         LA    R2,0(,R2)         address.
+         LH    R3,14(,R1)           and length.
+         STM   R2,R3,WRKOVNVA Save for later.
+         SPACE 3
+         XC    WRKSHVEP,WRKSHVEP  Clear EXECCOMM EPLIST
+         XC    WRKSHVBS,WRKSHVBS     and SHVBLOCKs.
+*  Build SHVBLOCK for "stem.n".
+         LA    R5,WRKSHVBS     -> SHVBLOCKs.
+         USING SHVBLOCK,R5
+         MVI   SHVCODE,SHVSTORE  Call to set variable value
+         MVC   SHVVALA,WRKOVNVA  Set "stem.n" value address
+         MVC   SHVVALL,WRKOVNVA+4    and length.
+         L     R1,WRKOVNSF    Get tail
+         LA    R0,1(,R1)         for "stem.n"
+         ST    R0,WRKOVNSF          stem.
+         LA    R1,WRKOVNNA    -> addr/len of "stem.".
+         BAL   R14,STEMNBLD   Build "stem.n".
+         ST    R0,SHVNAMA     Set "stem.n" name address
+         ST    R1,SHVNAML        and length.
+         LR    R3,R1          Save for later.
+         LA    R14,SHVBLEN(,R5)  Link in
+         ST    R14,SHVNEXT          "stem.0" SHVBLOCK.
+         SPACE 3
+*  Build SHVBLOCK for "stem.0".
+         LR    R5,R14
+         MVI   SHVCODE,SHVSTORE   Call to set variable value
+         LA    R0,WRKOV0NM        Set "stem.0" name
+         ST    R0,SHVNAMA             address
+         MVC   SHVNAML,WRKOV0NA+4        and length.
+         LA    R14,WRKSTMNM   Get address of
+         A     R14,WRKOVNNA+4    "n".
+         ST    R14,SHVVALA    Save it for EXECCOMM.
+         LR    R15,R3         Get length of
+         S     R15,WRKOVNNA+4    "n".
+         ST    R15,SHVVALL    Save it for EXECCOMM.
+         SPACE 3
+         LA    R2,WRKSHVEP    -> EPLIST
+         USING EPLIST,R2
+         LA    R1,=CL8'EXECCOMM'  Set command
+         ST    R1,EPLCMD             name.
+         LA    R0,WRKSHVBS    Point to
+         ST    R0,EPLUWORD       SHVBLOCK chain.
+         LR    R0,R2          Pass EPLIST to EXECCOMM.
+         ICM   R1,B'1000',=X'02'  Indicate SUBCOM.
+         SVC   202            Go set the variables.
+         DC    AL4(1)
+         DROP  R2
+         LTR   R15,R15        Any errors?
+         BZ    TYPLEXIT       No, success!
+         BAL   R14,MSG004     "Error from EXECCOMM"
+TYPLEXIT DS    0H
+         LM    R0,R14,WRKTYPSV
+         BR    R14
+         DROP  R5
+         TITLE 'WAITRD - Supply command input.'
+WTRDSVC  DS    0H
+*
+*        Called as NUCEXT
+*
+*        Input:
+*             R1 -> CL8'WAITRD'
+*                   AL1(1),AL3(buff)
+*                   AL1(flag),AL3(bufflen)
+*             R2 -> SCBLOCK
+*             R12 = A(WTRDSVC)
+*             R14 = return address
+*
+         USING SCBLOCK,R2
+         L     R12,SCBXORG    Get base address.
+         L     R11,SCBWKWRD   Get workarea addss.
+         DROP  R2
+         STM   R0,R15,WRKWTRSV
+         B     WTRDGO
+         SPACE 3
+WTRDBALR DS    0H
+*
+*        Called via BALR
+*
+*        Input:
+*             R1 -> CL8'xxx'  Ignored
+*                   AL1(1),AL3(buff)
+*                   AL1(flag),AL3(bufflen)
+*             R14 = return address
+*             R15 = A(WTRDBALR)
+*
+         PUSH  USING
+         USING NUCON,0
+         USING WTRDBALR,R15
+         ST    R1,MCKOPSW      Save R1,
+         STM   R11,R12,PGMOPSW    R11,R12 for a moment.
+         NUCEXT QUERY,NAME='WAITRD'
+         DROP  R15            NUCEXT clobbers R15
+         USING SCBLOCK,R1
+         L     R12,SCBXORG    Get base address.
+         L     R11,SCBWKWRD   Get workarea addss.
+         STM   R0,R15,WRKWTRSV   Save regs
+         L     R1,MCKOPSW     Get R1 back.
+         ST    R1,WRKWTRSV+(1*4)  Fix R1,
+         MVC   WRKWTRSV+(11*4)(8),PGMOPSW  R11, R12
+         B     WTRDGO
+         POP   USING
+         SPACE 3
+WTRDGO   DS    0H
+*
+*        Input:
+*             R1 -> CL8'???'  Ignored
+*                   AL1(1),AL3(msg)
+*                   AL1(flag1,flag2),H'msglen'
+*             R14 = return address
+*
+         LR    R8,R1          Save caller's PLIST address.
+         L     R2,8(,R8)      Get output buffer
+         LA    R2,0(,R2)         address
+         L     R3,12(,R8)           and
+         LA    R3,0(,R3)               length.
+         LTR   R3,R3          Length supplied?
+         BNZ   *+8            Yes, skip.
+         LA    R3,130         No, get default.
+         STM   R2,R3,WRKIVNVA  Save for later.
+         SPACE 3
+         L     R1,WRKIVNSF    Get tail
+         LA    R0,1(,R1)         for "stem.n"
+         ST    R0,WRKIVNSF          stem.
+         C     R0,WRKIVNSM    Over max?
+         BH    WTRDEOF        Yes, handle end of "file".
+         LA    R1,WRKIVNNA    Get "stem." addr/len.
+         BAL   R14,STEMNBLD   Build the "stem.n".
+         SPACE 3
+         XC    WRKSHVEP,WRKSHVEP  Clear EXECCOMM EPLIST
+         XC    WRKSHVBS,WRKSHVBS     and SHVBLOCKs.
+         LA    R5,WRKSHVBS     -> SHVBLOCKs.
+         USING SHVBLOCK,R5
+         SPACE 3
+         MVI   SHVCODE,SHVFETCH  Fetch variable value
+         MVC   SHVNAMA,WRKIVNNA  Set "stem.n" name address
+         MVC   SHVNAML,WRKIVNNA+4    and length.
+         MVC   SHVVALA,WRKIVNVA  Set value buffer address
+         MVC   SHVVALL,WRKIVNVA+4    and length.
+         SPACE 3
+         LA    R2,WRKSHVEP    -> EPLIST
+         USING EPLIST,R2
+         LA    R1,=CL8'EXECCOMM'  Set command
+         ST    R1,EPLCMD             name.
+         LA    R0,WRKSHVBS    Point to
+         ST    R0,EPLUWORD       SHVBLOCK chain.
+         LR    R0,R2          Pass EPLIST to EXECCOMM.
+         ICM   R1,B'1000',=X'02'  Indicate SUBCOM.
+         SVC   202            Get variable.
+         DC    AL4(1)
+         DROP  R2
+         L     R1,SHVVALL     Pass length
+         STH   R1,14(,R8)        back to caller.
+         TM    SHVRET,SHVTRUNC  Did variable fit in buffer?
+         BO    WTRDEXIT       Yes, that's OK, caller spec'd length.
+         LTR   R15,R15        Any other error?
+         BZ    WTRDEXIT       No, success.
+         BAL   R14,MSG004     "Error from EXECCOMM"
+WTRDEXIT DS    0H
+         LM    R0,R14,WRKWTRSV
+         BR    R14
+         SPACE 3
+WTRDEOF  DS    0H
+*
+*        Some programs treat an empty input record as EOF, so we let
+*        the command ask for 1 more record than we have, and return
+*        length=0 it it does.  Any more, and it gets an error RC.
+*
+         S     R0,WRKIVNSM    How far over
+         C     R0,=F'1'          the max?
+         BE    WTRDEOF1       First request, send EOF.
+         LA    R15,3          Nth request, error.
+         B     WTRDEXIT
+WTRDEOF1 DS    0H             First EOF request gets
+         XC    14(2,R8),14(R8)   length=0.
+         SR    R15,R15        All is well-ish.
+         B     WTRDEXIT
+         TITLE 'Messages'
+MSG001   LINEDIT TEXT='RPSWRS001E Missing ...... value',               *
+               SUB=(CHARA,(R6)),DISP=ERRMSG,MF=(E,WRKLEDPL)
+         LA    R15,1
+         BR    R14
+         SPACE 3
+MSG002   LINEDIT TEXT='RPSWRS002E Missing information',DISP=ERRMSG,    *
+               MF=(E,WRKLEDPL)
+         LA    R15,2
+         BR    R14
+         SPACE 3
+MSG003   LINEDIT TEXT='RPSWRS003E Only one ...... option is allowed',  *
+               SUB=(CHARA,(R6)),DISP=ERRMSG,MF=(E,WRKLEDPL)
+         LA    R15,3
+         BR    R14
+         SPACE 3
+MSG004   LR    R2,R15
+         LR    R3,R14
+         BAL   R14,TEARDOWN   Prevent TYPLIN from catching message.
+         LINEDIT TEXT='RPSWRS004E Error ......... from EXECCOMM',      *
+               SUB=(DEC,(R2)),DISP=ERRMSG,MF=(E,WRKLEDPL)
+         LA    R15,4
+         BR    R3
+         SPACE 3
+MSG005   LINEDIT TEXT='RPSWRS005E ........ must be loaded as a nucleus *
+               extension',                                             *
+               SUB=(CHARA,(R4)),DISP=ERRMSG,MF=(E,WRKLEDPL)
+         LA    R15,5
+         BR    R14
+         SPACE 3
+MSG006   LA    R2,8(,R1)
+         LR    R3,R15
+         LR    R4,R14
+         BAL   R14,TEARDOWN   Prevent TYPLIN from catching message.
+         LINEDIT TEXT='RPSWRS006E Error ........ from NUCEXT ........',*
+               SUB=(DEC,(R3),CHARA,(R2)),DISP=ERRMSG,MF=(E,WRKLEDPL)
+         LA    R15,6
+         BR    R4
+         SPACE 3
+MSG007   LR    R3,R15
+         LINEDIT TEXT='RPSWRS007E Error ........ from SUBCOM QUERY EXEC*
+               COMM',                                                  *
+               SUB=(DEC,(R3)),DISP=ERRMSG,MF=(E,WRKLEDPL)
+         LA    R15,7
+         BR    R4
+         TITLE 'DSECTs'
+         NUCON ,
+         EPLIST ,
+         REGEQU ,
+         SCBLOCK ,
+         SHVBLOCK ,
+         USERSAVE ,
+         TITLE 'Data areas.'
+WRKAREA  DSECT ,
+WRKCMDEP DS    2D             EPLIST for called command.
+WRKSHVEP DS    2D             EPLIST for EXECCOMM call.
+WRKSHVBS DS    (((SHVBLEN*2)+7)/8)D  2 SHVBLOCKs.
+WRKQUAD  DS    2D             Quarword work area.
+WRKDOUB  DS    D              Doubleword work area.
+WRKCMDA  DS    A,F            Addr, len of command.
+WRKIVNNA DS    A,F            Addr, len of input "stem.n" name prefix.
+WRKIVNVA DS    A,F            Addr, len of input "stem.n" value.
+WRKOVNNA DS    A,F            Addr, len of output "stem.n" name prefix.
+WRKOVNVA DS    A,F            Addr, len of output "stem.n" value.
+WRKOV0NA DS    A,F            Addr, len of output "stem.0" name.
+WRKOV0VA DS    A,F            Addr, len of output "stem.0" value.
+WRKSUBCM DS    CL8            Command environment
+WRKSUBFN DS    XL8               and fence.
+WRKCMDTP DS    A              -> command tokensized plist.
+WRKCMDRC DS    F              Return code from command.
+WRKCMDW2 DS    A              -> past 1st word of command.
+WRKIVNSF DS    F              Numeric suffix of input "stem.n"
+WRKIVNSM DS    F                 and its maximum.
+WRKOVNSF DS    F              Numeric suffix of output "stem.n".
+WRKSACWR DS    A              Original ADMSCWR value.
+WRKSACRD DS    A              Original ADMSCRD value.
+WRKSAVE1 DS    16F
+WRKPRSSV EQU   WRKSAVE1       Savearea for PARSECMD.
+WRKSETSV EQU   WRKSAVE1       Savearea for SETUP.
+WRKTYPSV EQU   WRKSAVE1       Savearea for TYPLIN.
+WRKWTRSV EQU   WRKSAVE1       Savearea for WAITRD.
+WRKSAVE2 DS    16F
+WRKGWSAV EQU   WRKSAVE2       Savearea for GETWORD.
+WRKSBNSV EQU   WRKSAVE2       Savearea for STEMNBLD.
+WRKTEASV EQU   WRKSAVE2       Savearea for TEARDOWN.
+WRKLEDPL LINEDIT MF=L,MAXSUBS=2
+WRKSTMNL DS    F              Stel element name length.
+WRKSTMNM DS    CL255          Stem element name.
+WRKOV0NM DS    CL(255)        Output "stem.0" name.
+WRKSIZE  EQU   *-WRKAREA
+         END   ,

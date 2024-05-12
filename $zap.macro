@@ -1,0 +1,21 @@
+         MACRO ,
+&LABEL   $ZAP  &TYPE,&OFFSETX,&DATA
+         LCLC  &DATALBL,&TCODE
+&DATALBL SETC  'Z&SYSNDX.D'
+&TCODE   SETC  'E'
+         AIF   ('&TYPE' EQ 'END').TOK2
+&TCODE   SETC  'R'
+         AIF   ('&TYPE' EQ 'REP').TOK1
+&TCODE   SETC  'C'
+         AIF   ('&TYPE' EQ 'RESET').TOK2
+&TCODE   SETC  'V'
+         AIF   ('&TYPE' EQ 'VER').TOK1
+         MNOTE 8,'TYPE=&TYPE is invalid'
+         MEXIT ,
+.TOK1    ANOP  ,
+&LABEL   DC    AL4(X'&OFFSETX'),C'&TCODE',AL1(L'&DATALBL-1)
+&DATALBL DC    X'&DATA'
+         MEXIT ,
+.TOK2    ANOP  ,
+&LABEL   DC    AL4(0),C'&TCODE',AL1(0)
+         MEND  ,

@@ -1,0 +1,12 @@
+         MACRO ,
+&LABEL   $EXIT ,
+&LABEL   DS    0H
+         LR    R1,R13         Get workarea address
+         L     R0,WRKLEND         and size.
+         L     R13,4(,R13)    -> Caller's savearea.
+         ST    R15,16(,R13)   Set R15.
+*        DMSFRET DWORDS=(0),LOC=(1)
+         DMSFRET DWORDS=(0),LOC=(1)
+         LM    R14,R12,12(R13)  Restore caller's regs and our R15.
+         BR    R14            Return to caller.
+         MEND  ,

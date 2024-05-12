@@ -1,0 +1,85 @@
+MAI      TITLE 'Configuration.'
+         COPY  PLUCONFG
+PLUMAI   CSECT ,
+         ENTRY PLUMAIN
+         TITLE 'PLUMAIN - Main entry point, pre-NUCEXT.'
+         PUSH  USING
+         DROP  ,
+         USING NUCON,0
+         USING PLUMAI,R12
+         USING USERSAVE,R13
+PLUMAIN  DS    0H
+         STM   R0,R15,USERSAVE
+         SPACE 3
+*
+*        Load ourselves into nucleus free memory, then branch into
+*        PLUNGER in that copy to perform whatever command the user
+*        issued.
+*
+         L     R3,=V(PLUNXBEG)  Get
+         L     R4,=V(PLUNXEND)   our
+         SR    R4,R3                size.
+         LA    R0,7(,R4)      Get storage
+         SRL   R0,3              to hold
+         DMSFREE DWORDS=(0),TYPE=NUCLEUS  this module.
+         LR    R5,R1
+         SPACE 3
+         L     R6,=V(PLUCMDEP)  Get our 
+         S     R6,=V(PLUNXBEG)   relocated
+         AR    R6,R5                command entrypoint.
+         SPACE 3
+         LR    R0,R5          Copy
+         LR    R1,R4             module
+         LR    R14,R3               to
+         LR    R15,R4                  free
+         MVCL  R0,R14                     storage.
+         SPACE 3
+         NUCEXT SET,NAME='PLUNGER',                                    *
+               ENTRY=(R6),                                             *
+               INTTYPE=NONE,                                           *
+               KEY=NUCLEUS,                                            *
+               ORIGIN=((R5),(R4)),                                     *
+               PERM=YES,                                               *
+               SERVICE=YES,                                            *
+               SYSTEM=YES,                                             *
+               ERROR=1        Declare our nucleus extension.
+         LTR   R2,R15         OK?
+         BNZ   LOADERNX       No, error.
+         SPACE 3
+         L     R2,NUCXCBLK    Get our new SCBLOCK address.
+         XC    NUCPLUPT,NUCPLUPT  Clear our permanent storage address.
+         LR    R12,R6         Use our new
+         LR    R15,R12           entry address.
+         LM    R0,R1,USERSAVE  Restore
+         LM    R3,R11,USERSAVE+(R3*4)  other
+         L     R14,USERSAVE+(R14*4)  regs.
+         BR    R12            Jump to free-storage copy.
+         SPACE 3
+EXIT     DS    0H
+         LM    R0,R14,USERSAVE  Restore all but R15.
+         BR    R14            Return to caller.
+         SPACE 3
+LOADERNX DS    0H
+         BAL   R14,MSG001     "Error <n> from NUCEXT SET"
+         B     EXIT           Exit.
+         LTORG ,
+         TITLE 'Messages.'
+MSG001   DS    0H
+         LINEDIT TEXT='PLUMAI001E Error ........ from NUCEXT SET',     *
+               SUB=(DEC,(R2)),                                         *
+               DISP=ERRMSG
+         LA    R15,1
+         BR    R14
+         POP   USING
+         TITLE 'Permanent storage.'
+         PLUPRM ,
+         TITLE 'DSECTs.'
+         NUCON ,
+         ORG   NUCON+X'FFC'
+NUCPLUPT DS    A              -> PLUNGER PRMSECT when ENABLEd.
+         ORG   ,
+         EJECT ,
+         REGEQU ,
+         SCBLOCK ,
+         USERSAVE ,
+         END   ,

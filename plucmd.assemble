@@ -1,0 +1,395 @@
+CMD      TITLE 'Configuration.'
+         COPY  PLUCONFG
+         TITLE 'PLUCMD - The PLUNGER command.'
+PLUCMD   CSECT ,
+         ENTRY PLUCMDEP
+         TITLE 'PLUNGER - PLUNGER Control NUCEXT.'
+         PUSH  USING
+         USING NUCON,0
+         USING SCBLOCK,R2
+PLUCMDEP $ENTER ,
+         LR    R3,R1          Tokenized PLIST.
+         SPACE 3
+         CLC   8(8,R3),=CL8'DEBUG' Control debugging code?
+         BE    CMDDEBUG       Yes, do it.
+         CLC   16(8,R3),=8X'FF' End of command after verb?
+         BNE   PCMDERSY       No, syntax error.
+         CLC   8(8,R3),=CL8'DISABLE' Release control?
+         BE    CMDDISAB       Yes, do it.
+         CLC   8(8,R3),=CL8'ENABLE' Take control?
+         BE    CMDENABL       Yes, do it.
+         CLC   8(8,R3),=CL8'RESET'  Are we being dropped?
+         BE    CMDRESET       Yes, tear down the funcs.
+         CLC   8(8,R3),=CL8'PURGE'   Did something abend?
+         BE    PCMDEXOK       Yes, nothing to do.
+         CLC   8(8,R3),=CL8'VERSION'  Show our version?
+         BE    CMDVERSN       Yes, do it.
+         BAL   R14,MSG003     "Invalid operation <name>"
+         B     PCMDEXIT
+         SPACE 1
+PCMDEXOK DS    0H
+         SR    R15,R15
+PCMDEXIT $EXIT ,
+         SPACE 3
+PCMDERSY BAL   R14,MSG005     "Invalid syntax for command"
+         B     PCMDEXIT       Exit.
+         SPACE 3
+PCMDERBP BAL   R14,MSG007     "Bad parameter <parm> for <cmd> command"
+         B     PCMDEXIT       Exit.
+         SPACE 3
+VERSION  DC    CL8'&PLUVERS'
+BLDDATE  DC    CL8'&SYSDATE'
+BLDTIME  DC    CL8'&SYSTIME'
+         TITLE 'CMDDEBUG - Turn debugging on or off.'
+         PUSH  USING
+CMDDEBUG DS    0H
+         ICM   R10,B'1111',NUCPLUPT  Got a PRMSECT?
+         BZ    DBGENPRM       No, can't do anything.
+         USING PRMSECT,R10
+         CLC   16(8,R3),=8X'FF'  Just "DEBUG"?
+         BE    DBGSHOW        Yes, show current state.
+         LA    R4,24(,R3)
+         CLC   0(8,R4),=8X'FF'  "DEBUG something somethingelse"?
+         BNE   PCMDERBP       Yes, error.
+         LA    R4,16(,R3)
+         CLC   0(8,R4),=CL8'OFF'  "DEBUG OFF"?
+         BE    DBGOFF         Yes, go do it.
+         CLC   0(8,R4),=CL8'ON'  "DEBUG ON"?
+         BE    DBGON          Yes, go do it.
+         B     PCMDERBP       None of the above, error.
+         SPACE 3
+DBGOFF   DS    0H
+         NI    PRMFLAG1,255-PRMF1DBG  Turn off debugging flag.
+         LA    R4,=CL3'now'
+         LA    R5,=CL3'off'
+         BAL   R14,MSG009     "PLUNGER debugging is now <state>"
+         B     PCMDEXIT       Exit.
+         SPACE 3
+DBGON    DS    0H
+         OI    PRMFLAG1,PRMF1DBG  Turn on debugging flag.
+         LA    R4,=CL3'now'
+         LA    R5,=CL3'on'
+         BAL   R14,MSG009     "PLUNGER debugging is now <state>"
+         B     PCMDEXIT       Exit.
+         SPACE 3
+DBGSHOW  DS    0H
+         LA    R4,=CL3'   '
+         LA    R5,=CL3'on'    Assume debugging is on.
+         TM    PRMFLAG1,PRMF1DBG  Is it?
+         BO    *+8            Yes, skip.
+         LA    R5,=CL3'off'   No, say otherwise.
+         BAL   R14,MSG009     "PLUNGER debugging is <state>"
+         B     PCMDEXIT       Exit.
+         SPACE 3
+DBGENPRM DS    0H
+         BAL   R14,MSG008     "PLUNGER is not enabled."
+         B     PCMDEXIT       Exit.
+         POP   USING
+         TITLE 'CMDDISAB / CMDRESET - Clean up prior to being dropped.'
+         PUSH  USING
+CMDDISAB DS    0H
+CMDRESET DS    0H
+         NUCEXT QUERY,NAME='PIPMOD',ERROR=1,MF=(E,WRKNXQPL)
+         LTR   R15,R15        Is Pipelines backend loaded?
+         BNZ   DISANPIP       No, skip.
+         LR    R3,R1          Yes, save its SCBLOCK.
+*
+*        We can't "NUCXDROP PIPMOD" because NUCXDROP is a non-reentrant
+*        transient area MODULE, and we may already be running under its
+*        control.
+*
+         CNOP  4,8
+         BAL   R1,DISAPMDR
+         DC    CL8'PIPMOD'
+         DC    CL8'RESET'
+         DC    8X'FF'
+DISAPMDR ICM   R1,B'1000',=X'FF'  Issue "PIPMOD RESET"
+         SVC   202                  just like
+         DC    AL4(1)                  NUCXDROP does.
+         SPACE 3
+         L     R4,SCBXLEN-SCBLOCK(,R3)  Get size
+         LA    R4,7(,R4)         of PIPMOD
+         SRL   R4,3                 storage.
+         L     R5,SCBXORG-SCBLOCK(,R3)  Get address.
+         SPACE 3
+         NUCEXT CLR,NAME='PIPMOD',ERROR=1,MF=(E,WRKNXCPL) Remove NUCEXT
+         LTR   R15,R15        Did it work?
+         BNZ   DISAERDR       No, exit.
+         SPACE 3
+         LR    R0,R4          Release storage
+         LR    R1,R5             just like
+         DMSFRET DWORDS=(0),LOC=(1)  NUCXDROP does.
+DISANPIP DS    0H
+         SPACE 3
+         ICM   R1,B'1111',NUCPLUPT  Got a PRMSECT?
+         BZ    DISANPRM       No PRMSECT to return.
+         LA    R0,(PRMLEN+7)/8  Return our
+         DMSFRET DWORDS=(0),LOC=(1)   PRMSECT.
+         XC    NUCPLUPT,NUCPLUPT
+DISANPRM DS    0H
+         B     PCMDEXOK
+         SPACE 3
+DISAERDR BAL   R14,MSG004     "Error dropping <name>"
+         B     PCMDEXIT       Exit.
+         POP   USING
+         TITLE 'CMDENABL - Enable everything.'
+         PUSH  USING
+CMDENABL DS    0H
+         ICM   R10,B'1111',NUCPLUPT  Got a PRMSECT?
+         BZ    ENABNPRM       No, we're not enabled.
+         USING PRMSECT,R10
+         TM    PRMFLAG1,PRMF1ENA  Are we already enabled?
+         BZ    ENABGO         No, go do it.
+         BAL   R14,MSG010     "PLUNGER is already enabled"
+         B     PCMDEXIT       All done.
+         SPACE 3
+ENABNPRM DS    0H
+         LA    R0,(PRMLEN+7)/8  Get storage for
+         DMSFREE DWORDS=(0)   PRMSECT.
+         LTR   R15,R15        All well?
+         BNZ   ENABERPR       No, error.
+         LR    R10,R1
+         ST    R10,NUCPLUPT   Set our pointer.
+         XC    0(PRMLEN,R10),0(R10)  Clear it.
+ENABGO   DS    0H
+         MVC   PRMPLUNG,SCBXORG  Set our module's address.
+         OI    PRMFLAG1,PRMF1ENA  Say we're enabled.
+         SPACE 3
+         LR    R9,R2          Save our SCBLOCK pointer.
+         LR    R3,R13         Save our workarea pointer.
+         LR    R4,R12         Save our base address.
+         PUSH  USING          We're gonna mess with regs.
+*
+*        RPSNXL wants to be a nucleus extension, so fake up an
+*        SCBLOCK to pass to it.
+*
+         LA    R2,WRKSCBLK    Fake up
+         USING SCBLOCK,R2        an SCBLOCK
+         XC    SCBLOCK(SCBLOCKB),SCBLOCK for
+         MVC   SCBNAME,=CL8'NUCXLOAD'     NUCXLOAD.
+         L     R15,=V(RPSNXL) Set
+         S     R15,=A(X'20000')  relocated
+         AR    R15,R12              NUCXLOAD
+         ST    R15,SCBENTR             entrypoint.
+         DROP  R2
+         LR    R12,R15        Set R12 base too.
+         DROP  R12
+         LA    R13,WRKSAVE    Pass savearea.
+         CNOP  4,8
+         BAL   R1,ENABNXLD    Load PIPMOD.
+         DC    CL8'NUCXLOAD'
+         DC    CL8'PIPMOD'
+         DC    CL8'PIPELINE'
+         DC    CL8'('
+         DC    CL8'SYSTEM'
+         DC    CL8'SERVICE'
+         DC    CL8'IMMCMD'
+         DC    8X'FF'
+ENABNXLD DS    0H
+         BALR  R14,R15        Call RPSNXL to do NUCXLOAD.
+         LR    R12,R4         Restore base address.
+         LR    R13,R3         Restore workarea pointer.
+         LR    R2,R9          Restore SCBLOCK pointer.
+         POP   USING          We're done messing with regs.
+         LTR   R15,R15        Did NUCXLOAD work?
+         BNZ   ENABERNL       No, error.
+         SPACE 3
+         XC    WRKPLSTS,WRKPLSTS  Clear out plist.
+         NUCEXT QUERY,NAME='PIPMOD',ERROR=1,MF=(E,WRKNXQPL)
+         LTR   R15,R15        Did NUCXLOAD load it OK?
+         BNZ   ENABNPIP       No, nothing to fix up.
+         SPACE 3
+         MVC   PRMPIPMD,SCBXORG-SCBLOCK(R1)  Get its load address.
+         AIF   (NOT &DEBUG).ENAB01
+         TM    PRMFLAG1,PRMF1DBG  Are we debugging?
+         BZ    ENABNDBG       No, skip PER stuff.
+         L     R3,PRMPIPMD    Get its starting
+         L     R4,SCBXLEN-SCBLOCK(,R1)  and ending
+         AR    R4,R3                       addresses.
+         LINEDIT TEXT='PER SAVE T$E$M$P',DISP=CPCOMM,DOT=NO
+         LINEDIT TEXT='PER CLEAR',DISP=CPCOMM,DOT=NO
+         LINEDIT TEXT='PER I R ......:......',                         *
+               SUB=(HEX,(R3),HEX,(R4)),                                *
+               DISP=CPCOMM,DOT=NO,MF=(E,WRKLEDPL)
+         LINEDIT TEXT='PER SAVE PIPMOD',DISP=CPCOMM,DOT=NO
+         LINEDIT TEXT='PER GET T$E$M$P',DISP=CPCOMM,DOT=NO
+         LINEDIT TEXT='PER CLEAR T$E$M$P',DISP=CPCOMM,DOT=NO
+MSG014   LINEDIT TEXT='PLUCMD014I PIPMOD: PER I R ......:......',      *
+               SUB=(HEX,(R3),HEX,(R4)),                                *
+               DISP=TYPE,DOT=NO,COMP=NO,MF=(E,WRKLEDPL)
+ENABNDBG DS    0H
+.ENAB01   ANOP  ,
+ENABNPIP DS    0H
+         $CALL PLUZAPMD       Apply all our ZAPs.
+         LTR   R15,R15        Did it work?
+         BNZ   PCMDEXIT       No, exit with RC and messages.
+         SPACE 3
+         XC    WRKPLSTS,WRKPLSTS
+         LA    R1,ENABCINS+16  Build
+         ST    R1,WRKPLSTS+4     EPLIST
+         LA    R1,7(,R1)            for
+         ST    R1,WRKPLSTS+8           install
+         LA    R0,WRKPLSTS                command.
+         LA    R1,ENABCINS    Issue
+         ICM   R1,B'1000',=X'01'  the
+         SVC   202                  PIPMOD INSTALL
+         DC    AL4(1)                  command.
+         LTR   R15,R15        Did it work?
+         BNZ   ENABERPI       No, error.
+         SPACE 3
+         B     PCMDEXOK
+         SPACE 3
+ENABERPR BAL   R14,MSG011     "Unable to obtain PRMSECT storage"
+         B     PCMDEXIT       Exit.
+         SPACE 3
+ENABERNL BAL   R14,MSG012     "Error <n> from NUCXLOAD PIPELINE."
+         B     PCMDEXIT       Exit.
+         SPACE 3
+ENABERPI BAL   R14,MSG013     "Error <n> from PIPMOD INSTALL."
+         B     PCMDEXIT       Exit.
+         SPACE 3
+ENABCINS DS    0D
+*
+*        The Pipelines doc says "PIPMOD INSTALL PIPE", but PIPE MODULE
+*        does "PIPMOD [fence] install".  The former only seems to work
+*        from the command line, so we do the latter.
+*
+*         DC    CL8'PIPMOD'
+*         DC    CL8'INSTALL'
+*         DC    CL8'PIPE'
+*         DC    8X'FF'
+         DC    CL8'PIPMOD'
+         DC    8X'FF'
+         DC    CL8'install'
+         POP   USING
+         TITLE 'CMDVERSN - Display version.'
+         PUSH  USING
+CMDVERSN DS    0H
+         BAL   R14,MSG006     "Plunger version <n> dated <d> <t> ..."
+         B     PCMDEXIT       Exit.
+         DROP  R11
+         TITLE 'Messages.'
+MSG002   DS    0H             No WRKSECT on this one, so no MF=E.
+         LINEDIT TEXT='PLUCMD002E Cannot obtain workarea',DISP=ERRMSG
+         LA    R15,2
+         BR    R14
+         SPACE 3
+MSG003   DS    0H
+         LA    R3,8(,R3)
+         LINEDIT TEXT='PLUCMD003E Invalid operation ........',         *
+               SUB=(CHARA,(R3)),                                       *
+               DISP=ERRMSG,                                            *
+               MF=(E,WRKLEDPL)
+         LA    R15,3
+         BR    R14
+         SPACE 3
+MSG004   DS    0H
+         LR    R3,R1
+         LINEDIT TEXT='PLUCMD004E Error dropping ........',            *
+               SUB=(CHARA,(R3)),                                       *
+               DISP=ERRMSG,                                            *
+               MF=(E,WRKLEDPL)
+         LA    R15,4
+         BR    R14
+         SPACE 3
+MSG005   DS    0H
+         LINEDIT TEXT='PLUCMD005E Invalid syntax for command',         *
+               DISP=ERRMSG
+         LA    R15,5
+         BR    R14
+         SPACE 3
+MSG006   DS    0H
+         LINEDIT TEXT='PLUCMD006I PLUNGER version ........ dated ......*
+               .. ........',                                           *
+               SUB=(CHARA,VERSION,CHARA,BLDDATE,CHARA,BLDTIME),        *
+               DISP=ERRMSG,MF=(E,WRKLEDPL)
+         SR    R15,R15
+         BR    R14
+         SPACE 3
+MSG007   DS    0H
+         LINEDIT TEXT='PLUCMD007E Bad parameter ........ for ........ c*
+               ommand',                                                *
+               SUB=(CHARA,0(R4),CHARA,8(R3)),                          *
+               DISP=ERRMSG,                                            *
+               MF=(E,WRKLEDPL)
+         LA    R15,7
+         BR    R14
+         SPACE 3
+MSG008   DS    0H
+         LINEDIT TEXT='PLUCMD008E PLUNGER is not enabled',             *
+               DISP=ERRMSG,MF=(E,WRKLEDPL)
+         LA    R15,8
+         BR    R14
+         SPACE 3
+MSG009   DS    0H
+         LINEDIT TEXT='PLUCMD009I PLUNGER debugging is ... ...',       *
+               SUB=(CHARA,(R4),CHARA,(R5)),                            *
+               DISP=ERRMSG,MF=(E,WRKLEDPL)
+         SR    R15,R15
+         BR    R14
+         SPACE 3
+MSG010   DS    0H
+         LINEDIT TEXT='PLUCMD010E PLUNGER is already enabled',         *
+               DISP=ERRMSG,MF=(E,WRKLEDPL)
+         LA    R15,10
+         BR    R14
+         SPACE 3
+MSG011   DS    0H
+         LINEDIT TEXT='PLUCMD011E Unable to obtain PRMSECT storage',   *
+               DISP=ERRMSG,                                            *
+               MF=(E,WRKLEDPL)
+         LA    R15,11
+         BR    R14
+         SPACE 3
+MSG012   DS    0H
+         LR    R3,R15
+         LINEDIT TEXT='PLUCMD012E Error ........ from NUCXLOAD PIPELINE*
+               ',                                                      *
+               SUB=(DEC,(R3)),                                         *
+               DISP=ERRMSG,                                            *
+               MF=(E,WRKLEDPL)
+         LA    R15,12
+         BR    R14
+         SPACE 3
+MSG013   DS    0H
+         LR    R3,R15
+         LINEDIT TEXT='PLUCMD013E Error ........ from PIPMOD INSTALL', *
+               SUB=(DEC,(R3)),                                         *
+               DISP=ERRMSG,                                            *
+               MF=(E,WRKLEDPL)
+         LA    R15,13
+         BR    R14
+         SPACE 3
+* MSG014 inline above
+         LTORG ,
+         POP   USING
+         TITLE 'Permanent storage.'
+         PLUPRM ,
+         TITLE 'Working storage.'
+WRKSECT  DSECT ,
+WRKSAVE  DS    18F            Save area (must be first in DSECT).
+WRKUSAVE DS    F              Address of USERSAVE for nucext.
+WRKLEND  DS    F              Size of this WRKSECT in doublewords.
+         SPACE 1
+WRKPLST1 DS    0D             Assorted plists, sharing space.
+WRKLEDPL LINEDIT MF=L,MAXSUBS=3  LINEDIT plist.
+         ORG   WRKPLST1
+WRKNXCPL NUCEXT CLR,MF=L      NUCEXT CLR plist.
+         ORG   WRKPLST1
+WRKNXQPL NUCEXT QUERY,MF=L    NUCEXT QUERY plist.
+         ORG   WRKPLST1
+WRKSCBLK DS    XL48           SCBLOCK for calling NUCXLOAD.
+         ORG   ,
+WRKPLSTS EQU   WRKPLST1,*-WRKPLST1
+WRKDATA  DS    0D             Start of variable data area.
+WRKLEN   EQU   *-WRKSECT
+         TITLE 'DSECTs.'
+         NUCON ,
+         ORG   NUCON+X'FFC'
+NUCPLUPT DS    A              -> PLUNGER PRMSECT.
+         ORG   ,
+         EJECT ,
+         REGEQU ,
+         SCBLOCK ,
+         USERSAVE ,
+         END   ,

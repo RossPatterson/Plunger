@@ -1,0 +1,154 @@
+ZAP      TITLE 'Configuration.'
+         COPY  PLUCONFG
+         ENTRY PLUZAPMD
+PLUZAP   CSECT ,
+         TITLE 'PLUZAPMD - ZAP the PIPELINE module.'
+         PUSH  USING
+         USING NUCON,0
+PLUZAPMD $ENTER ,
+         L     R10,NUCPLUPT
+         USING PRMSECT,R10
+         LA    R4,ZAPTBL      -> ZAP table
+         NI    WRKFLAG1,255-(WRKF1NGO+WRKF1ERX) Turn off "NO GO" flags.
+MAINLOOP DS    0H
+         USING ZAPENT,R4
+         ICM   R5,B'1111',ZAPOFF Get offset to location.
+         SR    R6,R6          Get data
+         IC    R6,ZAPDLEN        length.
+         TM    PRMFLAG1,PRMF1DBG  Are we debugging?
+         BZ    NODEBUG        No, skip message.
+         AIF   (NOT &DEBUG).NXLD02
+         LR    R7,R5
+         TM    ZAPTYPE,X'40'
+         BZ    *+6
+         A     R7,PRMPIPMD
+         LA    R8,1(,R6)
+MSG015   LINEDIT TEXT='PLUZAP015I ZAP .. ...... .......................*
+               ............',                                          *
+               SUB=(CHARA,(ZAPTYPE,1),HEX,(R7),HEX4A,(ZAPDATA,(R8))),  *
+               DISP=ERRMSG,DOT=NO,MF=(E,WRKLEDPL)
+.NXLD02  ANOP  ,
+NODEBUG  DS    0H
+         CLI   ZAPTYPE,ZAPTEND  Is it an END entry?
+         BE    CARDEND        Yes, do it.
+         CLI   ZAPTYPE,ZAPTREP  Is it a REP entry?
+         BE    CARDREP        Yes, do it.
+         CLI   ZAPTYPE,ZAPTRES  Is it a RESET entry?
+         BE    CARDRSET       Yes, do it.
+         CLI   ZAPTYPE,ZAPTVER  Is it a VER entry?
+         BE    CARDVER        Yes, do it.
+         DC    H'0,1'         Can't happen.
+         SPACE 3
+CARDRSET DS    0H
+         NI    WRKFLAG1,255-WRKF1NGO  Turn off "NO GO" flag.
+         SH    R6,=H'1'       Fix length.
+         B     NEXTCARD       Go process next entry.
+         SPACE 3
+CARDREP  DS    0H
+         TM    WRKFLAG1,WRKF1NGO  Is the "NO GO" flag on?
+         BO    ERRNOGO        Yes, don't do it.
+         A     R5,PRMPIPMD    Convert offset to address.
+         MVC   0(*-*,R5),ZAPDATA *** EXecuted ***
+         EX    R6,*-6         Replace the target with ZAP data.
+         B     NEXTCARD       Go process next entry.
+         SPACE 3
+CARDVER  DS    0H
+         A     R5,PRMPIPMD    Convert offset to address.
+         CLC   0(*-*,R5),ZAPDATA *** EXecuted ***
+         EX    R6,*-6         Does the data match?
+         BE    NEXTCARD       Yes, go process next entry.
+         BAL   R14,MSG016     "VER failed: <addr> <data>"
+         TM    WRKFLAG1,WRKF1NGO  Flag already set?
+         BO    NEXTCARD       Yes, go process next entry.
+         OI    WRKFLAG1,WRKF1NGO  No, turn on "NO GO" flag
+         OI    WRKFLAG1,WRKF1ERX     and fail.
+         BAL   R14,MSG017     "NOGO flag is now set"
+         B     NEXTCARD       Go process next entry.
+         SPACE 3
+ERRNOGO  BAL   R14,MSG018     "NOGO flag is set, REP ignored"
+NEXTCARD LA    R4,ZAPDATA+1(R6) -> next patch.
+         B     MAINLOOP       Next!
+CARDEND  DS    0H
+*        WAITT ,              Let all the ZAP output get to console.
+         LA    1,=CL8'CONWAIT'  Because
+         SVC   202               WAITT doesn't
+         DC    AL4(1)               have ERROR=.
+         SPACE 3
+         DROP  R4
+EXIT     DS    0H
+         SR    R15,R15        Assume all is well.
+         TM    WRKFLAG1,WRKF1ERX  Did at least one VER fail?
+         BZ    *+8            No, guessed right.
+         LA    R15,20         Yes, need to fail.
+         $EXIT ,
+         TITLE 'Messages.'
+MSG002   DS    0H             No WRKSECT on this one, so no MF=E.
+         LINEDIT TEXT='PLUZAP002E Cannot obtain workarea',DISP=ERRMSG
+         LA    R15,2
+         BR    R14
+         SPACE 3
+MSG016   DS    0H
+         USING ZAPENT,R4
+         LA    R2,1(,R6)      Bump up from EX len.
+         LINEDIT TEXT='PLUZAP016E VER failed: ........ expected .......*
+               ............................, found ....................*
+               ...............',                                       *
+               SUB=(HEXA,ZAPOFF,HEX4A,(ZAPDATA,(R2)),                  *
+               HEX4A,((R5),(R2))),                                     *
+               DISP=ERRMSG,                                            *
+               MF=(E,WRKLEDPL)
+         DROP  R4
+         LA    R15,16
+         BR    R14
+         SPACE 3
+MSG017   DS    0H
+         LINEDIT TEXT='PLUZAP017E NOGO flag is now set',               *
+               DISP=ERRMSG
+         LA    R15,17
+         BR    R14
+         SPACE 3
+MSG018   DS    0H
+         LINEDIT TEXT='PLUZAP018E NOGO flag is set, REP ignored',      *
+               DISP=ERRMSG,                                            *
+               MF=(E,WRKLEDPL)
+         LA    R15,18
+         BR    R14
+         POP   USING
+         TITLE 'ZAPs to apply to PIPMOD.'
+ZAPTBL   DS    0D
+         SPACE 3
+         $ZAP  END
+         LTORG ,
+         TITLE 'ZAP details.'
+ZAPENT   DSECT ,
+ZAPOFF   DS    AL4            Offset to code location.
+ZAPTYPE  DS    C              Entry type.
+ZAPTEND  EQU   C'E'           - END
+ZAPTREP  EQU   C'R'           - REP
+ZAPTRES  EQU   C'C'           - RESET
+ZAPTVER  EQU   C'V'           - VER
+ZAPDLEN  DS    AL1            Data length.
+ZAPDATA  DS    0X             Start of ZAP data.
+         TITLE 'Working storage.'
+WRKSECT  DSECT ,
+WRKSAVE  DS    18F            Save area (must be first in DSECT).
+WRKLEND  DS    F              Size of this WRKSECT in doublewords.
+WRKFLAG1 DS    X              Flags
+WRKF1NGO EQU   X'80'          - ZAP "VER" failed.
+WRKF1ERX EQU   X'40'          - Need to fail PLUZAPMD.
+         SPACE 1
+WRKPLST1 DS    0D             Assorted plists, sharing space.
+WRKLEDPL LINEDIT MF=L,MAXSUBS=3  LINEDIT plist.
+         ORG   ,
+WRKPLSTS EQU   WRKPLST1,*-WRKPLST1
+WRKDATA  DS    0D             Start of variable data area.
+WRKLEN   EQU   *-WRKSECT
+         TITLE 'DSECTs.'
+         NUCON ,
+         ORG   NUCON+X'FFC'
+NUCPLUPT DS    A              -> PLUNGER PRMSECT.
+         ORG   ,
+         EJECT ,
+         PLUPRM ,
+         REGEQU ,
+         END   ,

@@ -46,3 +46,26 @@ NOTE: There is no documentation on the relocation data in a MODULE file.
       the top of RPSNXL ASSEMBLE.
 
 --------------------------------------------------------------------------------
+Date: 2024-05-12
+Num: 3
+Issue: DMSZAP056E FILE 'PIPELINE MODULE' CONTAINS INVALID RECORD FORMATS.
+
+The ZAP command issues message "DMSZAP056E FILE 'PIPELINE MODULE' CONTAINS
+INVALID RECORD FORMATS." and refuses to apply any ZAPs.  The problem is
+that ZAP can't handle relocatable MODULE files.
+
+Test:
+ZAP MODULE (NOPRINT INPUT PLUNGE01
+
+Fix:
+Wrote PLUCMD ASSEMBLE, to clear the clogs and make PIPEs run clean :-)
+Must be run and "ENABLE"d before first PIPE command is issued.
+
+Rather than write relocatable MODULE support for ZAP, I wrote a wrapper around
+NUCXLOAD to apply ZAPs to the MODULE in memory.  Implemented as PLUZAP
+ASSEMBLE.
+
+NOTE: This code uses a reserved word at NUCON+x'FFC' to hold a pointer to a
+      workarea (NUCPLUPT).  Nothing else in the virtual machine can use it.
+
+--------------------------------------------------------------------------------
