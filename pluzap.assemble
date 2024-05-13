@@ -116,7 +116,21 @@ MSG018   DS    0H
          POP   USING
          TITLE 'ZAPs to apply to PIPMOD.'
 ZAPTBL   DS    0D
-         SPACE 3
+         EJECT ,
+ZAP001   DS    0X
+*
+*        Update HRC415DS moved the CMS nucleus to high memory, but
+*        but didn't set NUCALPHA, NUCSIGMA, and NUCOMEGA, so Pipelines
+*        thinks DMSCWR (WRTERM) isn't where should be.  Pipelines
+*        doesn't change any behavior, it just issues the message.
+*        Since we can't control where DMSCWR is located, we suppress
+*        the message instead.
+*
+         $ZAP  VER,248E6,12EE             LTR   R14,R14
+         $ZAP  VER,248E8,4780C164         BZ    X'164'(,R12)
+         $ZAP  REP,248E8,47F0C164         B     X'164'(,R12)
+         $ZAP  RESET
+         EJECT ,
          $ZAP  END
          LTORG ,
          TITLE 'ZAP details.'

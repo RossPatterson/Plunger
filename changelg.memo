@@ -1,3 +1,5 @@
+C0004 - FPLINY1291I The field ADMSCWR in NUCON is incorrect; found 00F8C158;
+        display of ABEND information may be in jeopardy.
 C0003 - DMSZAP056E FILE 'PIPELINE MODULE' CONTAINS INVALID RECORD FORMATS.
 C0002 - CMS Pipelines needs to be NUCXLOADed.
 C0001 - TRANS99 - Error writing file (RC = 6): file transfer canceled.

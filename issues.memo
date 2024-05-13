@@ -69,3 +69,23 @@ NOTE: This code uses a reserved word at NUCON+x'FFC' to hold a pointer to a
       workarea (NUCPLUPT).  Nothing else in the virtual machine can use it.
 
 --------------------------------------------------------------------------------
+Date: 2024-05-13
+Num: 4
+Issue: FPLINY1291I The field ADMSCWR in NUCON is incorrect; found 00F8C158;
+display of ABEND information may be in jeopardy.
+
+Update HRC415DS moved the CMS nucleus to high memory, but didn't set NUCALPHA,
+NUCSIGMA, and NUCOMEGA, so Pipelines thinks DMSCWR (WRTERM) isn't where it
+should be.  Pipelines doesn't change any behavior, it just issues the message.
+Since we can't control where DMSCWR is located, we suppress the message
+instead.
+
+Test:
+NUCXTEXT NUCXLOAD RPSNXL (SYSTEM
+NUCXLOAD PIPMOD PIPELINE (SYSTEM SERVICE IMMCMD
+PIPMOD INSTALL PIPE
+
+Fix:
+Wrote ZAP001 in PLUZAP ASSEMBLE to not issue the message.
+
+--------------------------------------------------------------------------------
