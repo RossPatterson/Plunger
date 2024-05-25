@@ -1,0 +1,242 @@
+FNC      TITLE 'Configuration.'
+         COPY  PLUCONFG
+         ENTRY PLUFNCLD
+         ENTRY PLUFNCUN
+PLUFNC   CSECT ,
+         TITLE 'PLUFNCLD - Load the functions.'
+         PUSH  USING
+         USING NUCON,0
+PLUFNCLD $ENTER ,
+         L     R10,NUCPLUPT
+         USING PRMSECT,R10
+         LA    R3,FUNCTBL     Get address and
+         LA    R4,FUNCCNT        count of func list.
+         SPACE 3
+LOADLOOP DS    0H
+         USING FUNCENT,R3
+         L     R5,FUNCEP      Get entry
+         AR    R5,R12            point.
+         XC    WRKPLSTS,WRKPLSTS  Clear out plist.
+         NUCEXT SET,NAME=FUNCNAME,                                     *
+               ENTRY=(R5),                                             *
+               INTTYPE=NONE,                                           *
+               KEY=NUCLEUS,                                            *
+               ORIGIN=((R12),0),                                       *
+               PERM=YES,                                               *
+               SERVICE=NO,                                             *
+               SYSTEM=YES,                                             *
+               MF=(E,WRKNXSPL),                                        *
+               ERROR=1
+         LTR   R15,R15        OK?
+         BNZ   LOADERIN       Error, exit.
+         SPACE 3
+         LA    R3,FUNCLEN(,R3) Go do
+         BCT   R4,LOADLOOP       next one.
+         DROP  R3
+         SPACE 3
+         MVC   PRMPGMNP,PGMNPSW  Save CMS's PGM-new PSW.
+         L     R0,=A(PGMHND-PLUFNC)  Take over
+         AR    R0,R12            with our
+         STCM  R0,B'0111',PGMNPSW+5  handler.
+         LA    R0,ABNXRES     Take over
+         ST    R0,ADMSABXR       with ours.
+         SPACE 3
+LOADEXOK DS    0H
+         SR    R15,R15
+LOADEXIT $EXIT ,
+         SPACE 3
+LOADERIN BAL   R14,MSG019     "Error <rc> from NUCEXT SET <name>"
+         B     LOADEXIT       Exit.
+         TITLE 'PLUFNXUN - Unload functions.'
+         PUSH  USING
+         USING NUCON,0
+PLUFNCUN $ENTER ,
+         ICM   R10,B'1111',NUCPLUPT
+         BZ    UNLDNPSW
+         USING PRMSECT,R10
+         MVC   PGMNPSW,PRMPGMNP  Restore CMS's PGM-new PSW.
+UNLDNPSW DS    0H
+         SPACE 3
+         LA    R3,FUNCTBL     Get address and
+         LA    R4,FUNCCNT        count of func list.
+         USING FUNCENT,R3
+UNLDLOOP DS    0H
+         XC    WRKPLSTS,WRKPLSTS  Clear out plist.
+         NUCEXT CLR,NAME=FUNCNAME,MF=(E,WRKNXCPL),ERROR=1
+         LTR   R15,R15        OK?
+         BNZ   UNLDERDR       Error, exit.
+         LA    R3,FUNCLEN(,R3) Go do
+         BCT   R4,UNLDLOOP       next one.
+         DROP  R3
+         SPACE 3
+UNLDEXOK DS    0H
+         SR    R15,R15
+UNLDEXIT $EXIT ,
+         SPACE 3
+UNLDERDR BAL   R14,MSG020     "Error <rc> from NUCEXT CLR <name>"
+         B     UNLDEXIT       Exit.
+         TITLE 'Messages.'
+MSG002   DS    0H             No WRKSECT on this one, so no MF=E.
+         LINEDIT TEXT='PLUFNC002E Cannot obtain workarea',DISP=ERRMSG
+         LA    R15,2
+         BR    R14
+         SPACE 3
+MSG019   DS    0H
+         LR    R2,R15
+         LINEDIT TEXT='PLUFNC019E Error ........ from NUCEXT SET ......*
+               ..',                                                    *
+               SUB=(DEC,(R2),CHARA,(R3)),                              *
+               DISP=ERRMSG,                                            *
+               MF=(E,WRKLEDPL)
+         LA    R15,19
+         BR    R14
+         SPACE 3
+MSG020   DS    0H
+         LR    R2,R15
+         LINEDIT TEXT='PLUFNC020E Error ........ from NUCEXT CLR ......*
+               ..',                                                    *
+               SUB=(DEC,(R2),CHARA,(R3)),                              *
+               DISP=ERRMSG,                                            *
+               MF=(E,WRKLEDPL)
+         LA    R15,20
+         BR    R14
+         SPACE 3
+         LTORG ,
+         POP   USING
+         TITLE 'CMS functions to take control of.'
+FUNCTBL  DS    0D
+         $FUNC ABNEXIT
+FUNCLEN  EQU   *-FUNCTBL
+*        $FUNC PGMHND         Only called via PGMNPSW.
+FUNCCNT  EQU   (*-FUNCTBL)/FUNCLEN
+         TITLE 'ABNEXIT - Set/clear ABEND handler.'
+         PUSH  USING
+         USING NUCON,0
+ABNEXIT  $ENTER ,
+         LR    R3,R1          Tokenized PLIST.
+         CLC   =CL8'CLR',8(R3)  Clear?
+         BE    ABNXCLR        Yes, do it.
+         CLC   =CL8'SET',8(R3)  Set?
+         BE    ABNXSET        Yes, do it.
+*        RESET isn't invoked by SVC.
+         LA    R15,1
+         B     ABNXEXIT
+         SPACE 3
+ABNXEXOK DS    0H
+         SR    R15,R15
+ABNXEXIT $EXIT ,
+         SPACE 3
+ABNXCLR  DS    0H
+         L     R10,NUCPLUPT
+         USING PRMSECT,R10
+         XC    PRMABNEX,PRMABNEX
+         XC    PRMABNUW,PRMABNUW
+         DROP  R10
+         B     ABNXEXOK
+         SPACE 3
+ABNXSET  DS    0H
+         L     R10,NUCPLUPT
+         USING PRMSECT,R10
+         MVC   PRMABNEX,16(R3)
+         MVC   PRMABNUW,20(R3)
+         DROP  R10
+         B     ABNXEXOK
+         POP   USING
+         EJECT ,
+         PUSH  USING
+         DROP  ,
+         USING NUCON,0
+ABNXRES  DS    0H
+         USING *,R15
+         L     R10,NUCPLUPT
+         USING PRMSECT,R10
+         NI    PRMFLAG1,255-PRMF1ABN  Allow further calls.
+         BR    R14
+         POP   USING
+         TITLE 'PGMHND - Persistent Program Check handler'
+         PUSH  USING
+         DROP  ,
+         USING NUCON,0
+PGMHND   DS    0H
+*
+*        Entered via PGMNPSW for all program checks.
+*
+         STM   R0,R15,LOWSAVE  Save regs temporarily.
+         BALR  R11,0         Set
+         LA    R1,*-PGMHND      up
+         SR    R11,R1              local
+         USING PGMHND,R11             base.
+         L     R1,=A(PGMHND-PLUFNC)  Set
+         LR    R12,R11          up
+         SR    R12,R1              common
+         USING PLUFNC,R12             base.
+         SPACE 3
+         L     R10,NUCPLUPT
+         USING PRMSECT,R10
+         ICM   R15,B'1111',PRMABNEX  Do we have an ABNEXIT?
+         BZ    PGMH2CMS       No, pass it to CMS.
+         TM    PRMFLAG1,PRMF1ABN  Have we tried it already?
+         BO    PGMH2CMS       Yes, pass it to CMS.
+         OI    PRMFLAG1,PRMF1ABN  No, we have now.
+         L     R1,AABWSECT
+         USING ABWSECT,R1
+         MVC   ABNREGS(16*4),LOWSAVE  Pass regs,
+         MVC   ABNPSW,PGMOPSW      PSW,
+         MVC   ABNUWRD,PRMABNUW       user word,
+         LA    R13,ABNPAS13              and savearea.
+         OC    ABNPSW+2(2),=X'00C0'  Turn PROG n into ABEND code.
+         BALR  R14,R15         Call ABNEXIT handler.
+*
+*        If the exit returns to us, let CMS abend continue.
+*
+         L     R1,AABWSECT    Get the
+         MVC   LOWSAVE(16*4),ABNREGS   regs and
+         NC    ABNPSW+2(2),=X'FF3F'  Turn ABEND code back to PROG n.
+         MVC   PGMOPSW,ABNPSW       PSW back for CMS.
+         SPACE 3
+PGMH2CMS DS    0H             Pass
+         MVC   IPLPSW,PRMPGMNP   the
+         LM    R0,R15,LOWSAVE       program check
+         LPSW  IPLPSW                  to CMS.
+         LTORG ,
+         POP   USING
+         TITLE 'Permanent storage.'
+         PLUPRM ,
+         TITLE 'Working storage.'
+WRKSECT  DSECT ,
+WRKSAVE  DS    18F            Save area (must be first in DSECT).
+WRKUSAVE DS    F              Address of USERSAVE for nucext.
+WRKLEND  DS    F              Size of this WRKSECT in doublewords.
+         SPACE 1
+WRKPLST1 DS    0D             Assorted plists, sharing space.
+WRKLEDPL LINEDIT MF=L,MAXSUBS=3  LINEDIT plist.
+         ORG   WRKPLST1
+WRKNXCPL NUCEXT CLR,MF=L      NUCEXT CLR plist.
+         ORG   WRKPLST1
+WRKNXSPL NUCEXT SET,MF=L      NUCEXT SET plist.
+         ORG   ,
+WRKPLSTS EQU   WRKPLST1,*-WRKPLST1
+WRKDATA  DS    0D             Start of variable data area.
+WRKLEN   EQU   *-WRKSECT
+         TITLE 'DSECTs.'
+FUNCENT  DSECT ,
+FUNCNAME DS    CL8            Function name.
+FUNCEP   DS    A              Offset to entrypoint.
+         EJECT ,
+         DMSABW ,
+         ORG   ABWSECT+X'F4'
+ABNUWRD  DS    F             ABNEXIT user word.
+         ORG   ,
+         EJECT ,
+         NUCON ,
+         ORG   NUCON+X'E70'
+ADMSABXR DS    A              ABNEXIT RESET entrypoint.
+         ORG   NUCON+X'FFC'
+NUCPLUPT DS    A              -> PLUNGER PRMSECT.
+         ORG   ,
+         EJECT ,
+         REGEQU ,
+         SCBLOCK ,
+         SVCSAVE ,
+         USERSAVE ,
+         END   ,

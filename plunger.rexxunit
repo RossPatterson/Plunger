@@ -1,0 +1,184 @@
+/* Unit tests for the PLUNGER command. */
+
+TestSetup:
+   'SET CMSTYPE HT'
+
+   /* Provoke loading of RXUSERFN, so it doesn't disturb NUCXMAP output. */
+   Call NoError 'RXUSERFN LOAD ZZZ'
+
+   /* Reset PLUNGER to clean state. */
+   Call NoError 'NUCEXT PLUNGER'
+   If RC = 0 then Call NoError 'NUCXDROP PLUNGER'
+
+   /* Remember SET EMSG state so we can restore it during teardown. */
+   Call Erase '$$EMSG$$ EXEC A'
+   Call NoError 'MAKEBUF'
+   'CP FIFO QUERY SET'
+   Pull 'EMSG' OldEMsg ','
+   Call NoError 'DROPBUF'
+   'EXECIO 1 DISKW $$EMSG$$ EXEC A (FINIS STRING &CONTROL OFF'
+   'EXECIO 1 DISKW $$EMSG$$ EXEC A (FINIS STRING CP SET EMSG' OldEmsg
+   'SET EMSG ON'
+   'SET CMSTYPE RT'
+
+   /* Ensure WITHSTEM is available. */
+   Call NoError 'NUCEXT WITHSTEM'
+   If RC <> 0 then 'NUCXTEXT WITHSTEM (SYSTEM'
+
+   Return
+
+TestTeardown:
+   'SET CMSTYPE HT'
+   Call NoError 'NUCXDROP WITHSTEM'
+   Call NoError 'EXEC $$EMSG$$'
+   Call NoError 'NUCEXT PLUNGER'
+   If RC = 0 then Call NoError 'NUCXDROP PLUNGER'  /* Reset to clean state. */
+   'SET CMSTYPE RT'
+   Call Erase '$$EMSG$$ EXEC A'
+   Return
+
+TestDebugExtraParms:
+   'PLUNGER ENABLE'
+   Ref.0 = 1
+   Ref.1 = 'PLUCMD007E Bad parameter FNORD for DEBUG command.'
+   Call NoError 'WITHSTEM OUTPUT O. COMMAND PLUNGER DEBUG ON FNORD'
+   $RC = RC
+   Call AssertStemEqual 'Ref.', 'O.'
+   Call AssertEqual 7, $RC
+   Return
+
+TestDebugOff:
+   'PLUNGER ENABLE'
+   Ref.0 = 1
+   Ref.1 = 'PLUCMD009I PLUNGER debugging is now off.'
+   'WITHSTEM OUTPUT O. COMMAND PLUNGER DEBUG OFF'
+   Call AssertStemEqual 'Ref.', 'O.'
+   Return
+
+TestDebugOn:
+   'PLUNGER ENABLE'
+   Ref.0 = 1
+   Ref.1 = 'PLUCMD009I PLUNGER debugging is now on.'
+   'WITHSTEM OUTPUT O. COMMAND PLUNGER DEBUG ON'
+   Call AssertStemEqual 'Ref.', 'O.'
+   Return
+
+TestDebugNone:
+   'PLUNGER ENABLE'
+   Ref.0 = 1
+   Ref.1 = 'PLUCMD009I PLUNGER debugging is off.'
+   'WITHSTEM OUTPUT O. COMMAND PLUNGER DEBUG'
+   Call AssertStemEqual 'Ref.', 'O.'
+   Return
+
+TestDebugNotEnabled:
+   Ref.0 = 1
+   Ref.1 = 'PLUCMD008E PLUNGER is not enabled.'
+   Call NoError 'WITHSTEM OUTPUT O. COMMAND PLUNGER DEBUG'
+   $RC = RC
+   Call AssertStemEqual 'Ref.', 'O.'
+   Call AssertEqual 8, $RC
+   Return
+
+TestDisable:
+   ExpectedDifference = 3
+   'PLUNGER ENABLE'
+   'WITHSTEM OUTPUT NBEFORE. COMMAND NUCXMAP'
+   'WITHSTEM OUTPUT O. COMMAND PLUNGER DISABLE'
+   Call AssertEqual 0, O.0
+   'WITHSTEM OUTPUT NAFTER. COMMAND NUCXMAP'
+   Call AssertEqual NBefore.0 - ExpectedDifference, NAfter.0
+   Call NoError 'NUCEXT PIPMOD'
+   Call AssertEqual 1, RC
+   Return
+
+TestDisableTwice:
+   'PLUNGER ENABLE'
+   'WITHSTEM OUTPUT A. COMMAND PLUNGER DISABLE'
+   Call AssertEqual 0, A.0
+   'WITHSTEM OUTPUT NBEFORE. COMMAND NUCXMAP'
+   Call NoError 'WITHSTEM OUTPUT B. COMMAND PLUNGER DISABLE'
+   $RC = RC
+   'WITHSTEM OUTPUT NAFTER. COMMAND NUCXMAP'
+   Call AssertEqual NBefore.0, NAfter.0
+   Call AssertEqual 'PLUNGER', Word(NAfter.4, 1)  /* 1: hdr 2: TYPLIN 3: WITHSTEM */
+   Call AssertEqual 0, $RC
+   Return
+
+TestEnable:
+   ExpectedDifference = 4 /* 3 functions + PLUNGER */
+   'WITHSTEM OUTPUT NBEFORE. COMMAND NUCXMAP'
+   'WITHSTEM OUTPUT O. COMMAND PLUNGER ENABLE'
+   Call AssertEqual 0, O.0
+   /* Could check 'em all here, but that's tiresome. */
+   'WITHSTEM OUTPUT NAFTER. COMMAND NUCXMAP'
+   Call AssertEqual NBefore.0 + ExpectedDifference, NAfter.0
+   Return
+
+TestEnableTwice:
+   'WITHSTEM OUTPUT A. COMMAND PLUNGER ENABLE'
+   Call AssertEqual 0, A.0
+   'WITHSTEM OUTPUT NBEFORE. COMMAND NUCXMAP'
+   Ref.0 = 1
+   Ref.1 = 'PLUCMD010E PLUNGER is already enabled.'
+   Call NoError 'WITHSTEM OUTPUT B. COMMAND PLUNGER ENABLE'
+   $RC = RC
+   Call AssertStemEqual 'Ref.', 'B.'
+   Call AssertEqual 10, $RC
+   'WITHSTEM OUTPUT NAFTER. COMMAND NUCXMAP'
+   Call AssertEqual NBefore.0, NAfter.0
+   Return
+
+TestExtraParms:
+   Ref.0 = 1
+   Ref.1 = 'PLUCMD005E Invalid syntax for command.'
+   Call NoError 'WITHSTEM OUTPUT O. COMMAND PLUNGER ENABLE FNORD'
+   $RC = RC
+   Call AssertStemEqual 'Ref.', 'O.'
+   Call AssertEqual 5, $RC
+   Return
+
+TestInvalidCmd:
+   Ref.0 = 1
+   Ref.1 = 'PLUCMD003E Invalid operation BANANA.'
+   RC = NoError('WITHSTEM OUTPUT O. COMMAND PLUNGER BANANA')
+   $RC = RC
+   Call AssertStemEqual 'Ref.', 'O.'
+   Call AssertEqual 3, $RC
+   Return
+
+TestNoCmd:
+   Ref.0 = 1
+   Ref.1 = 'PLUCMD005E Invalid syntax for command.'
+   RC = NoError('WITHSTEM OUTPUT O. COMMAND PLUNGER')
+   $RC = RC
+   Call AssertStemEqual 'Ref.', 'O.'
+   Call AssertEqual 5, $RC
+   Return
+
+TestPurge:
+   Call Skip 'Cannot test an ABEND condition without aborting test script :-('
+
+TestReset:
+   /* PLUNGER treats the NUCXDROP warning as DISABLE. */
+   ExpectedDifference = 4 /* 3 functions + PLUNGER */
+   'PLUNGER ENABLE'
+   'WITHSTEM OUTPUT NBEFORE. COMMAND NUCXMAP'
+   'NUCXDROP PLUNGER'
+   'WITHSTEM OUTPUT NAFTER. COMMAND NUCXMAP'
+   Call AssertEqual NBefore.0 - ExpectedDifference, NAfter.0
+   Call NoError 'NUCEXT PIPMOD'
+   Call AssertEqual 1, RC
+   Return
+
+TestVersion:
+   'WITHSTEM OUTPUT O. COMMAND PLUNGER VERSION'
+   Call AssertEqual 1, O.0
+   Call AssertStartsWith 'PLUCMD006I PLUNGER version', O.1
+   Return
+
+Erase: Procedure
+   'SET CMSTYPE HT'
+   Call NoError 'ERASE' Arg(1)
+   'SET CMSTYPE RT'
+   Return

@@ -89,3 +89,21 @@ Fix:
 Wrote ZAP001 in PLUZAP ASSEMBLE to not issue the message.
 
 --------------------------------------------------------------------------------
+Date: 2024-05-25
+Num: 5
+Issue: DMSITP143T OPERATION EXCEPTION OCCURRED AT DDBF52 IN SYSTEM ROUTINE
+PIPMOD, RE-IPL CMS.
+
+Missing function ABNEXIT.  PIPMOD sets up an ABEND handler via the ABNEXIT
+SET function, but VM/370 CMS doesn't support ABNEXIT.
+
+Test:
+PLUNGER ENABLE
+
+Fix:
+Wrote an ABNEXIT nucleus extension in PLUFNC ASSEMBLE to trap program checks
+and let PIPMOD try to recover.
+
+TODO: Consider CMS mod to make all DMSABN calls go through the abend exit.
+
+--------------------------------------------------------------------------------

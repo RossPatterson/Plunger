@@ -1,11 +1,15 @@
          MACRO ,
          PLUPRM ,
 PRMSECT  DSECT ,
+PRMPGMNP DS    D              CMS's PGMNEW PSW.
+PRMABNEX DS    A              ABNEXIT handler.
+PRMABNUW DS    F              ABNEXIT user word.
 PRMPIPMD DS    A              PIPMOD address.
 PRMPLUNG DS    A              PLUNGER address.
 PRMFLAG1 DS    X              Flags
 PRMF1DBG EQU   X'80'           - Debugging is active.
 PRMF1ENA EQU   X'40'           - Are we ENABLEd?
+PRMF1ABN EQU   X'20'           - PRMABNEX ABNEXIT has been invoked.
          DS    3X
 PRMLEN   EQU   *-PRMSECT
          MEND  ,

@@ -1,0 +1,77 @@
+/* Unit tests for PLUNGER functions (NUCEXTs, etc.). */
+
+TestSetup:
+   /* Ensure WITHSTEM is available. */
+   Call NoError 'NUCEXT WITHSTEM'
+   If RC <> 0 then 'NUCXTEXT WITHSTEM (SYSTEM'
+
+   /* Reset PLUNGER to clean state. */
+   Call NoError 'NUCEXT PLUNGER'
+   If RC = 0 then Call NoError 'NUCXDROP PLUNGER'
+   'PLUNGER ENABLE'
+   Return
+
+TestTeardown:
+   'SET CMSTYPE RT'
+   'NUCXDROP WITHSTEM'
+   'PLUNGER DISABLE'
+   Return
+
+TestAbnExit:
+   Call Erase 'TAEX * A'
+   I=0
+   I=I+1; A.I = "TAEX     START X'20000'"
+   I=I+1; A.I = "         USING *,12"
+   I=I+1; A.I = "         LR    12,15"
+   I=I+1; A.I = "         ST    14,RETADDR"
+   I=I+1; A.I = "         CNOP  0,4"
+   I=I+1; A.I = "         BAL   1,SET"
+   I=I+1; A.I = "         DC    CL8'ABNEXIT'"
+   I=I+1; A.I = "         DC    CL8'SET'"
+   I=I+1; A.I = "         DC    A(EXIT)"
+   I=I+1; A.I = "         DC    A(UWORD)"
+   I=I+1; A.I = "         DC    8X'FF'"
+   I=I+1; A.I = "SET      SVC   202"
+   I=I+1; A.I = "         DC    AL4(RET14)"
+   I=I+1; A.I = "         DC    H'0'"
+   I=I+1; A.I = "EXIT     DS    0H"
+   I=I+1; A.I = "         BALR  12,0"
+   I=I+1; A.I = "         USING *,12"
+   I=I+1; A.I = "         CNOP  0,4"
+   I=I+1; A.I = "         BAL   1,CLR"
+   I=I+1; A.I = "         DC    CL8'ABNEXIT'"
+   I=I+1; A.I = "         DC    CL8'CLR'"
+   I=I+1; A.I = "         DC    A(EXIT)"
+   I=I+1; A.I = "         DC    8X'FF'"
+   I=I+1; A.I = "CLR      SVC   202"
+   I=I+1; A.I = "         DC    AL4(RETURN)"
+   I=I+1; A.I = "RETURN   L     14,RETADDR"
+   I=I+1; A.I = "RET14    BR    14"
+   I=I+1; A.I = "UWORD    DS    A"
+   I=I+1; A.I = "RETADDR  DS    A"
+   I=I+1; A.I = "         END"
+   A.0 = I
+   Call Assemble 'A.', 'TAEX'
+   Call NoError 'CP DISCARD TRACE END'
+   'LOAD TAEX ( START'
+   Call Erase 'TAEX * A'
+   Return
+
+Assemble:
+trace o
+   Parse arg CodeStem . , FN .
+   Do I = 0 to Value(CodeStem || '0')
+      Line.I = Left(Value(CodeStem || I), 80)
+   End
+   'EXECIO' Line.0 'DISKW' FN 'ASSEMBLE A 1 F 80 ( FINIS STEM Line.'
+   Call NoError 'WITHSTEM OUTPUT SYSTERM. COMMAND ASSEMBLE' FN '( DISK'
+   If RC <> 0 then Do I = 1 to SysTerm.0
+      Say SysTerm.I
+   End
+   Return
+
+Erase:
+   'SET CMSTYPE HT'
+   Call NoError 'ERASE' Arg(1)
+   'SET CMSTYPE RT'
+   Return
