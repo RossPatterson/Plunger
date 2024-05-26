@@ -131,6 +131,17 @@ ZAP001   DS    0X
          $ZAP  REP,248E8,47F0C164         B     X'164'(,R12)
          $ZAP  RESET
          EJECT ,
+ZAP002   DS    0X
+*
+*        PIPMOD uses BSM R14,0 without gating it by a test for
+*        390 mode.  So NOP it out.
+*
+         $ZAP  VER,22EEE,1FEE             SLR  R14,R14
+         $ZAP  VER,22EF0,0BE0             BSM  R14,0
+         $ZAP  VER,22EF2,16FE             OR   R15,R14
+         $ZAP  REP,22EF0,0700             NOPR 0
+         $ZAP  RESET
+         EJECT ,
          $ZAP  END
          LTORG ,
          TITLE 'ZAP details.'

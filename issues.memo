@@ -107,3 +107,27 @@ and let PIPMOD try to recover.
 TODO: Consider CMS mod to make all DMSABN calls go through the abend exit.
 
 --------------------------------------------------------------------------------
+Date: 2024-05-25
+Num: 6
+Issue: FPLINX410E ABEND 000000C1 at 00DD14CA; PSW 00E000C1 60DD14CA.
+
+ABEND 000000C1 at 00DD14CA; PSW 00E000C1 60DD14CA.
+... In FPLINXRN; offset 000002A2 in FPLINX 12/01/14 13.28.
+... GPR0: 00000000 00000001 000007A5 00000013.
+... GPR4: 00000000 1001000F 00F83108 00EF1518.
+... GPR8: 00008938 00000000 0000A6C0 00EF12C8.
+... GPRC: 00DD125C 00EF14A8 00000000 00008BE0.
+... Store 00DD14C0: C25A41F0 82A81FEE 0BE016FE 50F072B8 9102D060.
+DMSITP141T OPERATION EXCEPTION OCCURRED AT DD14CA IN ROUTINE PIPE.
+
+PIPMOD uses BSM R14,0 without gating it by a test for 390 mode.
+
+Test:
+PLUNGER ENABLE
+PIPE LITERAL x | CONSOLE
+
+Fix:
+Wrote ZAP002 in PLUZAP ASSEMBLE to NOP the BSM out, making the code think it's
+not in 390 mode.
+
+--------------------------------------------------------------------------------
