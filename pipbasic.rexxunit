@@ -1,0 +1,68 @@
+/* Unit tests for basic operation of CMS Pipelines for VM/370 CE. */
+
+TestSetup:
+   /* Ensure WITHSTEM is available. */
+   Call NoError 'NUCEXT WITHSTEM'
+   If RC <> 0 then 'NUCXTEXT WITHSTEM (SYSTEM'
+
+   /* Reset PLUNGER to clean state. */
+   Call NoError 'NUCEXT PLUNGER'
+   If RC = 0 then Call NoError 'NUCXDROP PLUNGER'
+   'PLUNGER ENABLE'
+   Return
+
+TestTeardown:
+   Call NoError 'NUCXDROP WITHSTEM'
+   Call NoError 'NUCEXT PLUNGER'
+   If RC = 0 then Call NoError 'NUCXDROP PLUNGER'  /* Reset to clean state. */
+   Return
+
+TestLiteralHole:
+   'PIPE literal some text|hole'
+   Return
+
+TestHelloWorld:
+   'WITHSTEM OUTPUT O. COMMAND PIPE literal Hello world!|console'
+   Call AssertEqual 1, O.0
+   Call AssertIdentical 'Hello world!', O.1
+   Return
+
+TestHelloStem:
+   'PIPE literal Hello stem!|stem Out.'
+   Call AssertEqual 1, Out.0
+   Call AssertIdentical 'Hello stem!', Out.1
+   Return
+
+TestLocateFaninany:
+   Expected.0 = 4
+   Expected.1 = '1:b'
+   Expected.2 = '2:a'
+   Expected.3 = '1:b'
+   Expected.4 = '2:a'
+   'WITHSTEM OUTPUT Out. COMMAND PIPE (end ?)' ,
+      'literal a|literal b|literal a|literal b|',
+      'split: locate /b/ | change //1:/ | merge: faninany | console',
+      '?split: | change //2:/ | merge:'
+   Call AssertStemIdentical 'Expected.', 'Out.'
+   Return
+
+TestLocateFaninanyStem:
+   Expected.0 = 4
+   Expected.1 = '1:b'
+   Expected.2 = '2:a'
+   Expected.3 = '1:b'
+   Expected.4 = '2:a'
+   'PIPE (end ?)' ,
+      'literal a|' ,
+      'literal b|' ,
+      'literal a|' ,
+      'literal b|' ,
+      'split: locate /b/ |' ,
+      'change //1:/ |' ,
+      'merge: faninany |' ,
+      'stem O.',
+      '?split: |' ,
+      'change //2:/ |' ,
+      'merge:'
+   Call AssertStemIdentical 'Expected.', 'O.'
+   Return

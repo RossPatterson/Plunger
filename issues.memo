@@ -131,3 +131,21 @@ Wrote ZAP002 in PLUZAP ASSEMBLE to NOP the BSM out, making the code think it's
 not in 390 mode.
 
 --------------------------------------------------------------------------------
+Date: 2024-06-02
+Num: 7
+Issue: Pipelines without system interfaces work.
+
+Test:
+REXXUNIT PIPBASIC
+
+Examples:
+PIPE LITERAL x | HOLE
+
+PIPE LITERAL Hello world! | CONSOLE
+
+PIPE (END ?)
+   LITERAL A|LITERAL B|LITERAL a|LITERAL b| X: LOCATE /b/
+   | CHANGE //1:/ | Y: FANINANY | CONSOLE
+   ?X:|CHANGE //2:/ | Y:
+
+--------------------------------------------------------------------------------
