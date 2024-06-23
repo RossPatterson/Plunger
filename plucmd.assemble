@@ -152,6 +152,8 @@ CMDENABL DS    0H
          B     PCMDEXIT       All done.
          SPACE 3
 ENABNPRM DS    0H
+         MVI   NUCCFA,0       Let Pipelines figure out machine type.
+         SPACE 3
          LA    R0,(PRMLEN+7)/8  Get storage for
          DMSFREE DWORDS=(0)   PRMSECT.
          LTR   R15,R15        All well?
@@ -395,6 +397,8 @@ WRKDATA  DS    0D             Start of variable data area.
 WRKLEN   EQU   *-WRKSECT
          TITLE 'DSECTs.'
          NUCON ,
+         ORG   NUCON+X'CFA'
+NUCCFA   DS    X              Machine-type flags (relocated).
          ORG   NUCON+X'FFC'
 NUCPLUPT DS    A              -> PLUNGER PRMSECT.
          ORG   ,

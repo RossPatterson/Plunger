@@ -149,3 +149,21 @@ PIPE (END ?)
    ?X:|CHANGE //2:/ | Y:
 
 --------------------------------------------------------------------------------
+Date: 2024-06-23
+Num: 8
+Issue: Incorrect detection of machine mode.
+
+PIPMOD tests NUCMFLAG to determine what sort of CMS it is running in.  But that
+byte was originally DCSSFLG in VM/370, until it was turned into a spare byte
+in VM/SP, and later re-used.
+
+Test:
+None
+
+Fix:
+Wrote ZAP003 in PLUZAP ASSEMBLE to use reserved NUCON field NUCCFA, which has
+always been unused, and lets PIPMOD set either NUCMEC or NUCM370 in it,
+depending on whether CMS is running in EC mode or not.  There turn out to lots
+of these.
+
+--------------------------------------------------------------------------------

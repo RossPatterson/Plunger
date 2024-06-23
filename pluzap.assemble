@@ -142,6 +142,51 @@ ZAP002   DS    0X
          $ZAP  REP,22EF0,0700             NOPR 0
          $ZAP  RESET
          EJECT ,
+ZAP003   DS    0X
+*
+*        PIPMOD tests NUCMFLAG in several places to determine what
+*        sort of CMS it is running in.  But that  byte was originally
+*        DCSSFLG in VM/370, until it was turned into a spare byte in
+*        VM/SP, and later re-used.  So the check is wrong.  This ZAP
+*        takes over a different spare byte, NUCCFA, and lets PIPMOD set
+*        and lets PIPMOD set either NUCMEC or NUCM370 in it, depending
+*        on whether CMS is running in EC mode or not, and then test
+*        that everywhere.
+*
+         $ZAP  VER,0856E,91A605EA         TM    NUCMFLAG,NUCMXA+...
+         $ZAP  REP,0856E,91A60CFA         TM    NUCCFA,NUCMXA+...
+         $ZAP  VER,085A4,960205EA         OI    NUCMFLAG,NUCM370
+         $ZAP  REP,085A4,96020CFA         OI    NUCCFA,NUCM370
+         $ZAP  VER,085AC,962005EA         OI    NUCMFLAG,NUCMEC
+         $ZAP  REP,085AC,96200CFA         OI    NUCCFA,NUCMEC
+         $ZAP  VER,2464E,910205EA         TM    NUCMFLAG,NUCM370
+         $ZAP  REP,2464E,91020CFA         TM    NUCCFA,NUCM370
+         $ZAP  VER,24664,912205EA         TM   NUCMFLAG,NUCMEC+NUCM370
+         $ZAP  REP,24664,91220CFA         TM    NUCCFA,NUCMEC+NUCM370
+         $ZAP  VER,24906,914005EA         TM    NUCMFLAG,NUCMA4A8
+         $ZAP  REP,24906,91400CFA         TM    NUCCFA,NUCMA4A8
+         $ZAP  VER,24912,912005EA         TM    NUCMFLAG,NUCMEC
+         $ZAP  REP,24912,91200CFA         TM    NUCCFA,NUCMEC
+         $ZAP  VER,26D1E,910405EA         TM    NUCMFLAG,NUCMXC
+         $ZAP  REP,26D1E,91040CFA         TM    NUCCFA,NUCMXC
+         $ZAP  VER,2B370,41F005EA         LA    R15,NUCMFLAG
+         $ZAP  REP,2B370,41F00CFA         LA    R15,NUCCFA
+         $ZAP  VER,2B39E,411005EA         LA    R1,NUCMFLAG
+         $ZAP  REP,2B39E,41100CFA         LA    R1,NUCCFA
+         $ZAP  VER,3DD62,918005EA         TM    NUCMFLAG,NUCMXA
+         $ZAP  REP,3DD62,91800CFA         TM    NUCCFA,NUCMXA
+         $ZAP  VER,672E0,910405EA         TM    NUCMFLAG,NUCMXC
+         $ZAP  REP,672E0,91040CFA         TM    NUCCFA,NUCMXC
+         $ZAP  VER,673AE,91A405EA         TM    NUCMFLAG,NUCMXA+...
+         $ZAP  REP,673AE,91A40CFA         TM    NUCCFA,NUCMXA+...
+         $ZAP  VER,673BA,912005EA         TM    NUCMFLAG,NUCMEC
+         $ZAP  REP,673BA,91200CFA         TM    NUCCFA,NUCMEC
+         $ZAP  VER,7753A,918005EA         TM    NUCMFLAG,NUCMXA
+         $ZAP  REP,7753A,91800CFA         TM    NUCCFA,NUCMXA
+         $ZAP  VER,99DA4,918005EA         TM    NUCMFLAG,NUCMXA
+         $ZAP  REP,99DA4,91800CFA         TM    NUCCFA,NUCMXA
+         $ZAP  RESET
+         EJECT ,
          $ZAP  END
          LTORG ,
          TITLE 'ZAP details.'
@@ -170,6 +215,8 @@ WRKDATA  DS    0D             Start of variable data area.
 WRKLEN   EQU   *-WRKSECT
          TITLE 'DSECTs.'
          NUCON ,
+         ORG   NUCON+X'CFA'
+NUCCFA   DS    X              Machine-type flags (relocated).
          ORG   NUCON+X'FFC'
 NUCPLUPT DS    A              -> PLUNGER PRMSECT.
          ORG   ,
