@@ -167,3 +167,26 @@ depending on whether CMS is running in EC mode or not.  There turn out to lots
 of these.
 
 --------------------------------------------------------------------------------
+Date: 2024-07-10
+Num: 9
+Issue: DIAG 0 needs VM/SP bit.
+
+Because DIAG 0 in VM/370 doesn't set the "VM/SP" bit, PIPMOD's
+conditionl logic thinks it's running under VM/XA.
+
+Test:
+None, discovered while fixing issue 8.
+
+Fix:
+Wrote ZAP004 in PLUZAP ASSEMBLE to issue SVC 199 instead of DIAG 0.
+
+Added an SVC first-level interrupt handler (SVCHND) to PLUCMD ASSEMBLE, because
+CMS's HNDSVC is reset at the end of every command.
+
+Added SVC 199 code (S199D00) to PLUCMD ASSEMBLE to issue the DIAG and set the
+VM/SP bit before returning.
+
+WARNING: This code is called directly from the SVC New PSW, so it
+         sees EVERY SVC instruction, and must be fast and careful.
+
+--------------------------------------------------------------------------------

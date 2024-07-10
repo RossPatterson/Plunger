@@ -34,6 +34,11 @@ LOADLOOP DS    0H
          BCT   R4,LOADLOOP       next one.
          DROP  R3
          SPACE 3
+         MVC   PRMSVCNP,SVCNPSW  Save CMS's SVC-new PSW.
+         L     R0,=A(SVCHND-PLUFNC)  Take over
+         AR    R0,R12            with our
+         STCM  R0,B'0111',SVCNPSW+5  handler.
+         SPACE 3
          MVC   PRMPGMNP,PGMNPSW  Save CMS's PGM-new PSW.
          L     R0,=A(PGMHND-PLUFNC)  Take over
          AR    R0,R12            with our
@@ -54,6 +59,7 @@ PLUFNCUN $ENTER ,
          ICM   R10,B'1111',NUCPLUPT
          BZ    UNLDNPSW
          USING PRMSECT,R10
+         MVC   SVCNPSW,PRMSVCNP  Restore CMS's SVC-new PSW.
          MVC   PGMNPSW,PRMPGMNP  Restore CMS's PGM-new PSW.
 UNLDNPSW DS    0H
          SPACE 3
@@ -108,6 +114,7 @@ FUNCTBL  DS    0D
          $FUNC ABNEXIT
 FUNCLEN  EQU   *-FUNCTBL
 *        $FUNC PGMHND         Only called via PGMNPSW.
+*        $FUNC SVCHND         Only called via SVCNPSW.
 FUNCCNT  EQU   (*-FUNCTBL)/FUNCLEN
          TITLE 'ABNEXIT - Set/clear ABEND handler.'
          PUSH  USING
@@ -198,6 +205,69 @@ PGMH2CMS DS    0H             Pass
          MVC   IPLPSW,PRMPGMNP   the
          LM    R0,R15,LOWSAVE       program check
          LPSW  IPLPSW                  to CMS.
+         LTORG ,
+         POP   USING
+         TITLE 'SVCHND - Persistent SVC handler'
+         PUSH  USING
+         DROP  ,
+SVCHND   DS    0H
+*
+*        Entered via SVCNPSW for all SVCs.
+*
+*        BE EXTREMELY CAREFUL HERE!!!
+*
+         USING NUCON,0
+         STM   R0,R15,LOWSAVE
+         BALR  R11,0         Set
+         LA    R1,*-SVCHND      up
+         SR    R11,R1              local
+         USING SVCHND,R11             base.
+         L     R1,=A(SVCHND-PLUFNC)  Set
+         LR    R12,R11          up
+         SR    R12,R1              common
+         USING PLUFNC,R12             base.
+         CLI   SVCOPSW+3,199  Is it our Patch SVC?
+         BE    SVC199         Yes, handle it.
+SVCHPASS DS    0H
+         L     R10,NUCPLUPT
+         USING PRMSECT,R10
+         MVC   IPLPSW,PRMSVCNP  Get CMS's SVC-new PSW.
+         DROP  R10
+         LM    R0,R15,LOWSAVE  Restore regs and
+         LPSW  IPLPSW              pass it to CMS.
+         SPACE 3
+SVCHRTRN DS    0H
+         LM    R0,R15,LOWSAVE  SVC will update any it cares to.
+         LPSW  SVCOPSW        Return to caller.
+         TITLE 'SVC199 - Patch PIPMOD the hard way.'
+SVC199   DS    0H
+*
+*        Patch PIPMOD the hard way.  There are a few things we can't
+*        easily do as ZAPs.
+*
+         L     R1,SVCOPSW+4   -> H'subcode'
+         LA    R4,2(,R1)      Point past it.
+         STCM  R4,B'0111',SVCOPSW+5  Update return address.
+         LH    R3,0(,R1)      Get subcode.
+         SLL   R3,2           Get table index.
+         C     R3,=A(S199MAX)  Too high?
+         BL    S199TBL(R3)    No, go do it.
+         DC    H'0,2'         We can't issue a message, so... BOOM!
+         SPACE 3
+S199TBL  DS    0H             SVC 199 patch codes
+         B     S199DI00          0000: Patch DIAG 0000 call.
+S199MAX  EQU   (*-S199TBL)/4
+         SPACE 3
+S199DI00 DS    0H             DIAG 0000 patch.
+*
+*        Tell Pipelines we're not VM/XA et seq.
+*
+         LM    R14,R15,LOWSAVE+(R14*4)  Get input regs.
+         DIAG  R14,R15,X'0000'  Get CP info.
+         ST    R15,LOWSAVE+(15*4)  Pass back length.
+         OI    24(R14),X'80'  Turn on the VM/SP bit.
+         B     SVCHRTRN       Return from SVC 199.
+         SPACE 3
          LTORG ,
          POP   USING
          TITLE 'Permanent storage.'

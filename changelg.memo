@@ -1,3 +1,4 @@
+C0009 - DIAG 0 needs VM/SP bit.
 C0008 - Incorrect detection of machine mode.
 C0007 - Pipelines without system interfaces work.
 C0006 - FPLINX410E ABEND 000000C1 at 00DD07B2; PSW 00E000C1 60DD07B2.

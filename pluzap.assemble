@@ -187,6 +187,19 @@ ZAP003   DS    0X
          $ZAP  REP,99DA4,91800CFA         TM    NUCCFA,NUCMXA
          $ZAP  RESET
          EJECT ,
+ZAP004   DS    0X
+*
+*        DIAG 0 in VM/370 doesn't set the "VM/SP" bit, so PIPMOD
+*        thinks we're running VM/XA mode.  So patch the DIAG to
+*        call S199DI00 instead, where we'll set it.
+*
+         $ZAP  VER,865C,41E0A130          LA    R14,304(,R10)
+         $ZAP  VER,8660,41F00028          LA    R15,40
+         $ZAP  VER,8664,83EF0000          DIAG  R14,R15,X'0000'
+         $ZAP  REP,8664,0AC7              SVC   199
+         $ZAP  REP,8666,0000              DC    H'0'
+         $ZAP  RESET
+         EJECT ,
          $ZAP  END
          LTORG ,
          TITLE 'ZAP details.'
