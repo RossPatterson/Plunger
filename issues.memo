@@ -190,3 +190,28 @@ WARNING: This code is called directly from the SVC New PSW, so it
          sees EVERY SVC instruction, and must be fast and careful.
 
 --------------------------------------------------------------------------------
+Date: 2024-08-04
+Num: 10
+Issue: FPLINX409E Assert failure 000001C7 at 00D3BF18.
+
+FPLINX409E Assert failure 000001C7 at 00D3BF18.
+FPLINX411I ... In INITTHRE; offset 000002A8 in FPLINY 11/30/14 17.25.
+FPLINX412I ... GPR0: 00E75724 00ED2634 000161E0 00000000.
+FPLINX412I ... GPR4: 00017698 00F82108 00000000 00000000.
+FPLINX412I ... GPR8: 00ED23E8 00E75998 00E756C0 00E73988.
+FPLINX412I ... GPRC: 00D3BE5E 00E73BB0 00ED2AB0 00ED2410.
+FPLINX413I ... Store 00D3BF0C: 80EC9102 0CFA47E0 C0C00000 01C747F0 C0D2D210.
+DMSITP141T OPERATION EXCEPTION OCCURRED AT D3BF18 IN ROUTINE PIPE.
+
+Pipelines appears to not support BC-mode-only machines, as of at least level
+1.1.12.  Attempts to launch with SET ECMODE OFF will result in "FPLINX409E
+Assert failure 000001C7".
+
+Test:
+PLUNGER ENABLE
+PIPE LITERAL x | HOLE
+
+Fix:
+SET ECMODE ON before PIPE ...
+
+--------------------------------------------------------------------------------
