@@ -215,3 +215,19 @@ Fix:
 SET ECMODE ON before PIPE ...
 
 --------------------------------------------------------------------------------
+Date: 2024-09-16
+Num: 11
+Issue: Infinite loop getting WAITRD RC=2 from CONSOLE stage at start of pipeline.
+
+CONSOLE stage uses WAITRD code=W to read from the console.  There's no
+documentation about what it does, and VM/370 CMS doesn't support it.
+
+Test:
+PLUNGER ENABLE
+PIPE CONSOLE | CONSOLE
+
+Fix:
+Implemented WAITRD in PLUFNC ASSEMBLE to wrap the WAITRD nucleus function and
+replace code=W with code=T.
+
+--------------------------------------------------------------------------------

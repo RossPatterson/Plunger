@@ -57,6 +57,41 @@ TestAbnExit:
    Call Erase 'TAEX * A'
    Return
 
+TestWaitRd:
+   Call Erase 'TWRD * A'
+   I=0
+   I=I+1; A.I = "TWRD     START X'20000'"
+   I=I+1; A.I = "         USING *,12"
+   I=I+1; A.I = "         LR    12,15"
+   I=I+1; A.I = "         LR    2,14"
+   I=I+1; A.I = "*        RDTERM BUFFER,LENGTH=L'BUFFER,..."
+   I=I+1; A.I = "         CNOP  0,4"
+   I=I+1; A.I = "         BAL   1,DOIT"
+   I=I+1; A.I = "         DC    CL8'WAITRD'"
+   I=I+1; A.I = "         DC    X'01'"
+   I=I+1; A.I = "         DC    AL3(BUFFER)"
+   I=I+1; A.I = "         DC    C'W'"
+   I=I+1; A.I = "         DC    C'0'"
+   I=I+1; A.I = "         DC    AL2(L'BUFFER)"
+   I=I+1; A.I = "DOIT     SVC   202"
+   I=I+1; A.I = "         DC    AL4(RETURN)"
+   I=I+1; A.I = "         LA    15,901"
+   I=I+1; A.I = "         CLC   =C'MadeGloriousSummerByThisSonOfYork',BUFFER"
+   I=I+1; A.I = "         BNE   RETURN"
+   I=I+1; A.I = "         CLC   =H'33',14(1)"
+   I=I+1; A.I = "         BNE   RETURN"
+   I=I+1; A.I = "         LA    15,902"
+   I=I+1; A.I = "         SR    15,15"
+   I=I+1; A.I = "RETURN   BR    2"
+   I=I+1; A.I = "BUFFER   DS    CL1024"
+   I=I+1; A.I = "         END"
+   A.0 = I
+   Call Assemble 'A.', 'TWRD'
+   Queue 'MadeGloriousSummerByThisSonOfYork'
+   'LOAD TWRD ( START'
+   Call Erase 'TWRD * A'
+   Return
+
 Assemble:
 trace o
    Parse arg CodeStem . , FN .

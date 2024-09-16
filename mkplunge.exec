@@ -3,7 +3,7 @@ Arg Operands '(' Options
 If Operands <> '' | Word(Operands, 1) = '?' then Signal Usage
 Signal on Error
 
-Version = '0.1.10'
+Version = '0.1.11'
 OptDebug = 0
 Do While Options <> ''
    Parse var Options Option Options

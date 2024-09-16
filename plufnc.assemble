@@ -115,6 +115,7 @@ FUNCTBL  DS    0D
 FUNCLEN  EQU   *-FUNCTBL
 *        $FUNC PGMHND         Only called via PGMNPSW.
 *        $FUNC SVCHND         Only called via SVCNPSW.
+         $FUNC WAITRD
 FUNCCNT  EQU   (*-FUNCTBL)/FUNCLEN
          TITLE 'ABNEXIT - Set/clear ABEND handler.'
          PUSH  USING
@@ -270,6 +271,29 @@ S199DI00 DS    0H             DIAG 0000 patch.
          SPACE 3
          LTORG ,
          POP   USING
+         TITLE 'WAITRD - Read from the console.'
+         PUSH  USING
+WAITRD   $ENTER ,
+         SPACE 3
+         LR    R3,R1          Tokenized PLIST.
+         MVC   WRKRDTPL,0(R3)
+*
+*        I have no idea what RDTERM code 'W' means, but the Pipelines
+*        CONSOLE stage (at least) uses it.  Code 'T' (EDIT=NO) seems
+*        to be the best substititute that VM/370 CMS supports.
+*
+         CLI   WRKRDTPL+12,C'W'  Is it code 'W'?
+         BNE   *+8            No, skip
+         MVI   WRKRDTPL+12,C'T'  Yes, recode it.
+         LA    R1,WRKRDTPL    Issue RDTERM
+         ICM   R1,B'1000',=X'04'  with NUCEXT
+         SVC   202                   bypass.
+         DC    AL4(1)
+         LTR   R15,R15        Error?
+         BNZ   *+10           Yes, don't update length.
+         MVC   14(2,R3),WRKRDTPL+14  Get # bytes read.
+         $EXIT ,
+         POP   USING
          TITLE 'Permanent storage.'
          PLUPRM ,
          TITLE 'Working storage.'
@@ -284,6 +308,8 @@ WRKLEDPL LINEDIT MF=L,MAXSUBS=3  LINEDIT plist.
 WRKNXCPL NUCEXT CLR,MF=L      NUCEXT CLR plist.
          ORG   WRKPLST1
 WRKNXSPL NUCEXT SET,MF=L      NUCEXT SET plist.
+         ORG   WRKPLST1
+WRKRDTPL DS    XL16           RDTERM plist (no macro).
          ORG   ,
 WRKPLSTS EQU   WRKPLST1,*-WRKPLST1
 WRKDATA  DS    0D             Start of variable data area.

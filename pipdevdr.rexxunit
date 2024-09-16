@@ -1,0 +1,29 @@
+/* CMS Pipelines device driver tests */
+
+TestSetup:
+   /* Reset PLUNGER to clean state. */
+   Call NoError 'NUCEXT PLUNGER'
+   If RC = 0 then Call NoError 'NUCXDROP PLUNGER'
+   'PLUNGER ENABLE'
+   'PIPE literal x|hole'
+   Return
+
+TestTeardown:
+   /* Don't let the test leave anything in the stack. */
+   'DROPBUF'
+
+   /* Reset to clean state. */
+   Call NoError 'NUCEXT PLUNGER'
+   If RC = 0 then Call NoError 'NUCXDROP PLUNGER'
+   Return
+
+TestConsoleInput:
+   Msg.0 = 2
+   Msg.1 = 'Now is the winter of our discontent'
+   Msg.2 = 'made glorious summer by this sun of York'
+   Push ''
+   Push Msg.2
+   Push Msg.1
+   'PIPE console | stem Out.'
+   Call AssertStemIdentical 'Msg.', 'Out.'
+   Return
