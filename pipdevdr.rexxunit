@@ -1,6 +1,13 @@
 /* CMS Pipelines device driver tests */
 
 TestSetup:
+   /* Ensure WITHSTEM is available. */
+   Call NoError 'NUCEXT WITHSTEM'
+   If RC <> 0 then 'NUCXTEXT WITHSTEM (SYSTEM'
+
+   /* Don't let the test leave anything in the stack. */
+   Call NoError 'MAKEBUF'
+
    /* Reset PLUNGER to clean state. */
    Call NoError 'NUCEXT PLUNGER'
    If RC = 0 then Call NoError 'NUCXDROP PLUNGER'
@@ -13,6 +20,7 @@ TestTeardown:
    'DROPBUF'
 
    /* Reset to clean state. */
+   Call NoError 'NUCXDROP WITHSTEM'
    Call NoError 'NUCEXT PLUNGER'
    If RC = 0 then Call NoError 'NUCXDROP PLUNGER'
    Return
@@ -27,3 +35,122 @@ TestConsoleInput:
    'PIPE console | stem Out.'
    Call AssertStemIdentical 'Msg.', 'Out.'
    Return
+
+TestConsoleOutput:
+   Msg.0 = 2
+   Msg.1 = 'Now is the winter of our discontent'
+   Msg.2 = 'made glorious summer by this sun of York'
+   'WITHSTEM OUTPUT Out. COMMAND PIPE literal' Msg.2 ||'| literal' Msg.1 || '|console'
+   Call AssertStemIdentical 'Msg.', 'Out.'
+   Return
+
+TestCp:
+   'EXECIO * CP ( STEM Ref. STRING Q V CONS'
+   'PIPE CP QUERY V CONS | stem Out.'
+   Call AssertStemIdentical 'Ref.', 'Out.'
+   Return
+
+TestEmsgOn:
+   Msg = 'ABCDEF001I This is only a test.'
+   OldEMsg = SaveSetEmsg()
+   'SET EMSG ON'
+   'WITHSTEM OUTPUT O. COMMAND PIPE literal' Msg || '| emsg'
+   'SET EMSG' OldEMsg
+   Call AssertEqual 1, O.0
+   Call AssertIdentical Msg, O.1
+   Return
+
+TestEmsgCode:
+   Msg = 'ABCDEF001I This is only a test.'
+   OldEMsg = SaveSetEmsg()
+   'SET EMSG CODE'
+   'WITHSTEM OUTPUT O. COMMAND PIPE literal' Msg || '| emsg'
+   'SET EMSG' OldEMsg
+   Call AssertEqual 1, O.0
+   Call AssertIdentical Msg, O.1
+   Return
+
+TestEmsgText:
+   Msg = 'ABCDEF001I This is only a test.'
+   OldEMsg = SaveSetEmsg()
+   'SET EMSG TEXT'
+   'WITHSTEM OUTPUT O. COMMAND PIPE literal' Msg || '| emsg'
+   'SET EMSG' OldEMsg
+   Call AssertEqual 1, O.0
+   Call AssertIdentical Msg, O.1
+   Return
+
+TestEmsgOff:
+   Msg = 'ABCDEF001I This is only a test.'
+   OldEMsg = SaveSetEmsg()
+   'SET EMSG OFF'
+   'WITHSTEM OUTPUT O. COMMAND PIPE literal' Msg || '| emsg'
+   'SET EMSG' OldEMsg
+   Call AssertEqual 1, O.0
+   Call AssertIdentical Msg, O.1
+   Return
+
+TestStackInput:
+   Msg.0 = 2
+   Msg.1 = 'Now is the winter of our discontent'
+   Msg.2 = 'made glorious summer by this sun of York'
+   Push Msg.2
+   Push Msg.1
+   'PIPE stack | stem Out.'
+   Call AssertStemIdentical 'Msg.', 'Out.'
+   Return
+
+TestStackOutput:
+   Msg1 = 'Now is the winter of our discontent'
+   Msg2 = 'made glorious summer by this sun of York'
+   'PIPE literal' Msg2 ||'| literal' Msg1 || '|stack fifo'
+   Count = NoError('SENTRIES')
+   Call AssertEqual 2, Count
+   Parse pull Out1
+   Parse pull Out2
+   Call AssertIdentical Msg1, Out1
+   Call AssertIdentical Msg2, Out2
+   Return
+
+TestStem:
+   'PIPE literal Hello stem1!|literal Hello stem2!|stem Out.'
+   Call AssertEqual 2, Out.0
+   Call AssertIdentical 'Hello stem2!', Out.1
+   Call AssertIdentical 'Hello stem1!', Out.2
+   Return
+
+TestStrliteral:
+   'WITHSTEM OUTPUT O. COMMAND PIPE strliteral /  Hello  cruel  world!  / | console'
+   Call AssertEqual 1, O.0
+   Call AssertIdentical '  Hello  cruel  world!  ', O.1
+   Return
+
+TestSubcom:
+   'WITHSTEM OUTPUT O. COMMAND PIPE subcom CMS q cmstype | stem Q.'
+   Call AssertEqual 0, Q.0
+   Call AssertEqual 1, O.0
+   Call AssertIdentical 'CMSTYPE  = RT', O.1
+   Return
+
+TestVar:
+   'PIPE literal some text | var X'
+   Call AssertIdentical 'some text ', X
+   Return
+
+TestVarload:
+   'PIPE literal /VAR1/var1 text|literal /VAR2/var2 text| varload'
+   Call AssertIdentical 'var1 text', var1
+   Call AssertIdentical 'var2 text', var2
+   Return
+
+TestXrange:
+   'PIPE xrange 00-ff | var OUT'
+   Call AssertIdentical XRange('00'x, 'ff'x), Out
+   Return
+
+SaveSetEmsg: Procedure expose $RXU.
+   Call NoError 'MAKEBUF'
+   'CP FIFO QUERY SET'
+   Pull 'EMSG' OldEMsg ','
+   Call NoError 'DROPBUF'
+   Return OldEMsg

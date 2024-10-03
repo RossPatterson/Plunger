@@ -1,3 +1,5 @@
+C0012 - CONSOLE, CP, EMSG, LISTPDS, MEMBERS, PDSDIRECT, STACK, STEM,
+        STRLITERAL, SUBCOM, VAR, VARLOAD, XRANGE work.
 C0011 - Infinite loop getting WAITRD RC=2 from CONSOLE stage at start of
         pipeline.
 C0010 - FPLINX409E Assert failure 000001C7 at 00DF4F18.

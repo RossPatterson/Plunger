@@ -231,3 +231,15 @@ Implemented WAITRD in PLUFNC ASSEMBLE to wrap the WAITRD nucleus function and
 replace code=W with code=T.
 
 --------------------------------------------------------------------------------
+Date: 2024-10-03
+Num: 12
+Issue: CONSOLE, CP, EMSG, STACK, STEM, STRLITERAL, SUBCOM, VAR, VARLOAD,
+and XRANGE work.
+
+Test
+REXXUNIT PIPDEVDR:TestConsoleInput PIPDEVDR:TestConsoleOutput PIPDEVDR:TestCp
+REXXUNIT PIPDEVDR:TestEmsgOn PIPDEVDR:TestEmsgCode PIPDEVDR:TestEmsgText
+REXXUNIT PIPDEVDR:TestEmsgOff PIPDEVDR:TestStackInput PIPDEVDR:TestStackOutput
+REXXUNIT PIPDEVDR:TestStem PIPDEVDR:TestStrliteral PIPDEVDR:TestSubcom
+REXXUNIT PIPDEVDR:TestVar PIPDEVDR:TestVarload PIPDEVDR:TestXrange
+--------------------------------------------------------------------------------
