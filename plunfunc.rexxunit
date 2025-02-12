@@ -57,6 +57,143 @@ TestAbnExit:
    Call Erase 'TAEX * A'
    Return
 
+TestEPointRead:
+   Call Erase 'TEPR * A'
+   I=0
+   I=I+1; A.I = "TEPR     START X'20000'"
+   I=I+1; A.I = "         USING *,12"
+   TargetRecord = I
+   I=I+1; A.I = "         LR    12,15"
+   I=I+1; A.I = "         LR    2,14"
+   I=I+1; A.I = "         CNOP  0,4"
+   I=I+1; A.I = "         BAL   1,DOIT"
+   I=I+1; A.I = "         DC    CL8'EPOINT'"
+   I=I+1; A.I = "         DC    CL8'TEPR'"
+   I=I+1; A.I = "         DC    CL8'ASSEMBLE'"
+   I=I+1; A.I = "         DC    CL2'A'"
+   I=I+1; A.I = "         DC    HL2'-9'     normal WRPNT="
+   I=I+1; A.I = "         DC    HL2'-9'     normal RDPNT="
+   I=I+1; A.I = "         DC    H'0'"
+   I=I+1; A.I = "         DC    F'0'"
+   I=I+1; A.I = "         DC    CL2'F'"
+   I=I+1; A.I = "         DC    H'-1'       normal RECNO="
+   I=I+1; A.I = "         DC    F'0'"
+   I=I+1; A.I = "         DC    F'-1'       FORM=E RECNO="
+   I=I+1; A.I = "         DC    F'-1'       FORM=E NOREC="
+   I=I+1; A.I = "         DC    F'0'        FORM=E WRPNT="
+   I=I+1; A.I = "         DC    F'" || TargetRecord || "'        FORM=E RDPNT="
+   I=I+1; A.I = "DOIT     SVC   202"
+   I=I+1; A.I = "         DC    AL4(1)"
+   I=I+1; A.I = "         BR    2"
+   I=I+1; A.I= "          END"
+   A.0 = I
+   Call Assemble 'A.', 'TEPR'
+   'LOAD TEPR ( START'
+   'EXECIO 1 DISKR TEPR ASSEMBLE A ( VAR OUT'
+   Call Erase 'TEPR * A'
+   Call AssertIdentical Left(A.TargetRecord, 80), Out
+   Return
+
+TestEPointWrite:
+   Call Erase 'TEPW * A'
+   I=0
+   I=I+1; A.I = "TEPW     START X'20000'"
+   I=I+1; A.I = "         USING *,12"
+   I=I+1; A.I = "         LR    12,15"
+   TargetRecord = I
+   I=I+1; A.I = "         LR    2,14"
+   I=I+1; A.I = "         CNOP  0,4"
+   I=I+1; A.I = "         BAL   1,DOIT"
+   I=I+1; A.I = "         DC    CL8'EPOINT'"
+   I=I+1; A.I = "         DC    CL8'TEPW'"
+   I=I+1; A.I = "         DC    CL8'ASSEMBLE'"
+   I=I+1; A.I = "         DC    CL2'A'"
+   I=I+1; A.I = "         DC    HL2'-9'     normal WRPNT="
+   I=I+1; A.I = "         DC    HL2'-9'     normal RDPNT="
+   I=I+1; A.I = "         DC    H'0'"
+   I=I+1; A.I = "         DC    F'0'"
+   I=I+1; A.I = "         DC    CL2'F'"
+   I=I+1; A.I = "         DC    H'-1'       normal RECNO="
+   I=I+1; A.I = "         DC    F'0'"
+   I=I+1; A.I = "         DC    F'-1'       FORM=E RECNO="
+   I=I+1; A.I = "         DC    F'-1'       FORM=E NOREC="
+   I=I+1; A.I = "         DC    F'" || TargetRecord || "'        FORM=E WRPNT="
+   I=I+1; A.I = "         DC    F'0'        FORM=E RDPNT="
+   I=I+1; A.I = "DOIT     SVC   202"
+   I=I+1; A.I = "         DC    AL4(1)"
+   I=I+1; A.I = "         BR    2"
+   I=I+1; A.I= "          END"
+   A.0 = I
+   Call Assemble 'A.', 'TEPW'
+   'LOAD TEPW ( START'
+   A.TargetRecord = Left(" Blah blah BLAH!", 80)
+   'EXECIO 1 DISKW TEPW ASSEMBLE A ( VAR A.' || TargetRecord 'FINIS'
+   'EXECIO * DISKR TEPW ASSEMBLE A (STEM O.'
+   Call Erase 'TEPW * A'
+   Call AssertStemEqual 'A.', 'O.'
+   Return
+
+TestEState:
+   Call Erase 'TES DATA A'
+   Call NoError 'ESTATE TES DATA A'
+   Call AssertEqual 28, RC
+   'EXECIO 1 DISKW TES DATA A (FINIS STRING blah blah blah'
+   'ESTATE TES DATA A'
+   Call Erase 'TES DATA A'
+   Return
+
+TestEStateW:
+   Call Erase 'TESW DATA A'
+   Call NoError 'ESTATEW TESW DATA A'
+   Call AssertEqual 28, RC
+   'EXECIO 1 DISKW TESW DATA A (FINIS STRING blah blah blah'
+   'ESTATEW TESW DATA A'
+   Call Erase 'TESW DATA A'
+   Return
+
+TestRdBuf:
+   Call Erase 'TRB * A'
+   I=0
+   I=I+1; A.I = "TRB      START X'20000'"
+   I=I+1; A.I = "         USING *,12"
+   I=I+1; A.I = "         LR    12,15"
+   I=I+1; A.I = "         LR    2,14"
+   I=I+1; A.I = "*        FSREAD 'FN FT FM',FORM=E,BUFFER=BUFFER,BSIZE=256,"
+   I=I+1; A.I = "*              RECFM=F,RECNO=4"
+   I=I+1; A.I = "         CNOP  0,4"
+   I=I+1; A.I = "         BAL   1,DOIT"
+   TargetRecord = I
+   I=I+1; A.I = "         DC    CL8'RDBUF'"
+   I=I+1; A.I = "         DC    CL8'TRB'"
+   I=I+1; A.I = "         DC    CL8'ASSEMBLE'"
+   I=I+1; A.I = "         DC    CL2'A'"
+   I=I+1; A.I = "         DC    AL2(0)"
+   I=I+1; A.I = "         DC    AL4(BUFFER)"
+   I=I+1; A.I = "         DC    AL4(L'BUFFER)"
+   I=I+1; A.I = "         DC    C'F'"
+   I=I+1; A.I = "         DC    X'20'        FORM=E"
+   I=I+1; A.I = "         DC    AL2(99)"
+   I=I+1; A.I = "         DC    AL4(0)"
+   I=I+1; A.I = "         DC    F'" || TargetRecord || "'         FORM=E recno"
+   I=I+1; A.I = "         DC    F'1'         FORM=E norec"
+   I=I+1; A.I = "DOIT     SVC   202"
+   I=I+1; A.I = "         DC    AL4(RETURN)"
+   I=I+1; A.I = "         LA    15,901"
+   I=I+1; A.I = "         CLC   =C'         BAL   1,DOIT ',BUFFER"
+   I=I+1; A.I = "         BNE   RETURN"
+   I=I+1; A.I = "         LA    15,902"
+   I=I+1; A.I = "         CLC   =F'80',40(1)"
+   I=I+1; A.I = "         BNE   RETURN"
+   I=I+1; A.I = "         SR    15,15"
+   I=I+1; A.I = "RETURN   BR    2"
+   I=I+1; A.I = "BUFFER   DS    CL80"
+   I=I+1; A.I = "         END"
+   A.0 = I
+   Call Assemble 'A.', 'TRB'
+   'LOAD TRB ( START'
+   Call Erase 'TRB * A'
+   Return
+
 TestWaitRd:
    Call Erase 'TWRD * A'
    I=0
@@ -90,6 +227,43 @@ TestWaitRd:
    Queue 'MadeGloriousSummerByThisSonOfYork'
    'LOAD TWRD ( START'
    Call Erase 'TWRD * A'
+   Return
+
+TestWrBuf:
+   Call Erase 'TWB * A'
+   I=0
+   I=I+1; A.I = "TWB      START X'20000'"
+   I=I+1; A.I = "         USING *,12"
+   I=I+1; A.I = "         LR    12,15"
+   I=I+1; A.I = "         LR    2,14"
+   TargetRecord = I
+   I=I+1; A.I = "         CNOP  0,4"
+   I=I+1; A.I = "         BAL   1,DOIT"
+   I=I+1; A.I = "         DC    CL8'WRBUF'"
+   I=I+1; A.I = "         DC    CL8'TWB'"
+   I=I+1; A.I = "         DC    CL8'ASSEMBLE'"
+   I=I+1; A.I = "         DC    CL2'A'"
+   I=I+1; A.I = "         DC    AL2(0)"
+   I=I+1; A.I = "         DC    AL4(BUFFER)"
+   I=I+1; A.I = "         DC    AL4(L'BUFFER)"
+   I=I+1; A.I = "         DC    C'F'"
+   I=I+1; A.I = "         DC    X'20'        FORM=E"
+   I=I+1; A.I = "         DC    AL2(1)"
+   I=I+1; A.I = "         DC    AL4(0)"
+   I=I+1; A.I = "         DC    F'" || TargetRecord || "'         FORM=E recno"
+   I=I+1; A.I = "         DC    F'1'         FORM=E norec"
+   I=I+1; A.I = "DOIT     SVC   202"
+   I=I+1; A.I = "         DC    AL4(1)"
+   I=I+1; A.I = "         BR    2"
+   I=I+1; A.I = "BUFFER   DC    CL80'Blivet banana BLORF?'"
+   I=I+1; A.I = "         END"
+   A.0 = I
+   Call Assemble 'A.', 'TWB'
+   'LOAD TWB ( START'
+   A.TargetRecord = "Blivet banana BLORF?"
+   'EXECIO * DISKR TWB ASSEMBLE A (STEM O.'
+   Call Erase 'TWB * A'
+   Call AssertStemEqual 'A.', 'O.'
    Return
 
 Assemble:

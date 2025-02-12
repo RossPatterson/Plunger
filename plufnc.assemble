@@ -107,15 +107,37 @@ MSG020   DS    0H
          LA    R15,20
          BR    R14
          SPACE 3
+MSG021   DS    0H
+         LR    R3,R0
+         LINEDIT TEXT='PLUFNC021E Record number ........ is too large',*
+               SUB=(DEC,(R3)),                                         *
+               DISP=ERRMSG,                                            *
+               MF=(E,WRKLEDPL)
+         LA    R15,21
+         BR    R14
+         SPACE 3
+MSG022   DS    0H
+         LR    R3,R0
+         LINEDIT TEXT='PLUFNC022E Record count ........ is too large', *
+               SUB=(DEC,(R3)),                                         *
+               DISP=ERRMSG,                                            *
+               MF=(E,WRKLEDPL)
+         LA    R15,22
+         BR    R14
          LTORG ,
          POP   USING
          TITLE 'CMS functions to take control of.'
 FUNCTBL  DS    0D
          $FUNC ABNEXIT
 FUNCLEN  EQU   *-FUNCTBL
+         $FUNC EPOINT
+         $FUNC ESTATE
+         $FUNC ESTATEW
 *        $FUNC PGMHND         Only called via PGMNPSW.
 *        $FUNC SVCHND         Only called via SVCNPSW.
+         $FUNC RDBUF
          $FUNC WAITRD
+         $FUNC WRBUF
 FUNCCNT  EQU   (*-FUNCTBL)/FUNCLEN
          TITLE 'ABNEXIT - Set/clear ABEND handler.'
          PUSH  USING
@@ -160,6 +182,77 @@ ABNXRES  DS    0H
          USING PRMSECT,R10
          NI    PRMFLAG1,255-PRMF1ABN  Allow further calls.
          BR    R14
+         POP   USING
+         TITLE 'EPOINT - Move the read/write file pointers.'
+         PUSH  USING
+EPOINT   $ENTER ,
+*
+*        Support FSPOINT with FORM=E, but only as much as the non-E
+*        form can implement (i.e., RDPNT and WRPNT < 64K).
+*
+         SPACE 3
+         LR    R3,R1          Tokenized PLIST.
+         USING FSCBD,R3
+         MVC   WRKDSKPL,0(R3) Copy EPOINT plist.
+         L     R0,FSCBWPTR    Get FORM=E write pointer.
+         C     R0,=F'65533'   Too big?
+         BH    POINERIT       Yes, error.
+         STH   R0,WRKDSKPL+(FSCBITNO-FSCBD)  Set it in POINT plist.
+         L     R0,FSCBRPTR    Get FORM=E read pointer.
+         C     R0,=F'65533'   Too big?
+         BH    POINERNR       Yes, error.
+         STH   R0,WRKDSKPL+(FSCBBUFF-FSCBD)  Set it in POINT plist.
+         MVC   WRKDSKPL+(FSCBCOMM-FSCBD)(8),=CL8'POINT'  Set func.
+         LA    R1,WRKDSKPL    Issue
+         SVC   202               POINT.
+         DC    AL4(1)
+         SPACE 1
+POINEXIT $EXIT ,
+         SPACE 3
+POINERIT BAL   R14,MSG021     "Record number <n> is too large"
+         B     POINEXIT       Exit.
+         SPACE 3
+POINERNR BAL   R14,MSG022     "Record count <n> is too large"
+         B     POINEXIT       Exit.
+         DROP  R3
+         POP   USING
+         TITLE 'ESTATE / ESTATEW - Verify or open file'
+         PUSH  USING
+ESTATE   $ENTER ,
+         LA    R11,ESTATEX
+         BR    R11
+         DROP  R11
+         SPACE 3
+ESTATEW  $ENTER ,
+         SPACE 3
+         LA    R11,ESTATEX
+         BR    R11
+         DROP  R11
+         SPACE 3
+         USING ESTATEX,R11
+ESTATEX  DS    0H
+*
+*        Support FSSTATE with FORM=E.
+*
+         SPACE 3
+         LR    R3,R1          Tokenized PLIST.
+         USING FSCBD,R3
+         MVC   WRKDSKPL,0(R3) Copy ESTATE / ESTATEW plist.
+         MVC   WRKDSKPL+(FSCBCOMM-FSCBD)(7),FSCBCOMM+1  Set w/o 'E'.
+         MVI   WRKDSKPL+(FSCBCOMM-FSCBD)+7,C' '  Clr last char.
+         LA    R1,WRKDSKPL    Issue
+         SVC   202               STATE / STATEW.
+         DC    AL4(1)
+         MVC   FSCBBUFF,WRKDSKPL+(FSCBBUFF-FSCBD) Pass FST pointer out.
+         SPACE 1
+STATEXIT $EXIT ,
+         SPACE 3
+STATERIT BAL   R14,MSG021     "Record number <n> is too large"
+         B     STATEXIT       Exit.
+         SPACE 3
+STATERNR BAL   R14,MSG022     "Record count <n> is too large"
+         B     STATEXIT       Exit.
+         DROP  R3
          POP   USING
          TITLE 'PGMHND - Persistent Program Check handler'
          PUSH  USING
@@ -294,6 +387,82 @@ WAITRD   $ENTER ,
          MVC   14(2,R3),WRKRDTPL+14  Get # bytes read.
          $EXIT ,
          POP   USING
+         TITLE 'RDBUF / WRBUF - Read or write file records.'
+         PUSH  USING
+RDBUF    $ENTER ,
+*
+*        Support FSREAD FORM=E, but only as much as the non-E form can
+*        implement (i.e., NOREC and RECNO < 64K).
+*
+         LA    R11,XXBUF
+         BR    R11
+         DROP  R11
+         SPACE 3
+WRBUF    $ENTER ,
+*
+*        Support FSWRITE FORM=E, but only as much as the non-E form can
+*        implement (i.e., NOREC and RECNO < 64K).
+*
+         LA    R11,XXBUF
+         BR    R11
+         DROP  R11
+         SPACE 3
+         USING XXBUF,R11
+XXBUF    DS    0H
+         SPACE 3
+         LR    R3,R1          Tokenized PLIST.
+         USING FSCBD,R3
+         TM    FSCBFLG,FSCBFEPL  Is it FORM=E?
+         BZ    XXBFNOTE       No, Just reissue it w/ bypass-NUCEXT.
+         SPACE 3
+         MVC   WRKDSKPL,0(R3) Copy RDBUF / WRBUF plist.
+         L     R0,FSCBAITN    Get FORM=E record number.
+         C     R0,=F'65533'   Too big?
+         BH    XXBFERIT       Yes, error.
+         STH   R0,WRKDSKPL+(FSCBITNO-FSCBD)  Set it in XXBFE plist.
+         L     R0,FSCBANIT    Get FORM=E record count.
+         C     R0,=F'65533'   Too big?
+         BH    XXBFERNR       Yes, error.
+         STH   R0,WRKDSKPL+(FSCBNOIT-FSCBD)  Set it in XXBFE plist.
+         A     R0,FSCBAITN    Get last-record number.
+         C     R0,=F'65533'   Too big?
+         BH    XXBFERIT       Yes, error.
+         NI    WRKDSKPL+(FSCBFLG-FSCBD),255-FSCBFEPL  It's not FORM=E.
+         LA    R1,WRKDSKPL    Issue RDBUF / WRBUF
+         ICM   R1,B'1000',=X'04'  with NUCEXT
+         SVC   202                   bypass.
+         DC    AL4(1)
+         CLI   FSCBCOMM,C'R'  Is this RDBUF?
+         BNE   *+10           No, skip.
+         MVC   FSCBNORD,WRKDSKPL+(FSCBNORD-FSCBD) Yes, set byte cnt.
+         SPACE 1
+XXBFEXIT $EXIT ,
+         SPACE 3
+XXBFNOTE DS    0H
+         LR    R1,R3             Get FSCB.
+         ICM   R1,B'1000',=X'04' Reissue it
+         SVC   202                  with bypass-NUCEXT flag.
+         DC    AL4(1)
+         B     XXBFEXIT
+         SPACE 3
+XXBFERIT BAL   R14,MSG021     "Record number <n> is too large"
+         B     XXBFEXIT       Exit.
+         SPACE 3
+XXBFERNR BAL   R14,MSG022     "Record count <n> is too large"
+         B     XXBFEXIT       Exit.
+         DROP  R3
+         POP   USING
+         LTORG ,
+         TITLE 'FORM=E File System Control Block'
+         FSCBD ,
+FSCBAITN DS    F              FORM=E record number.
+FSCBANIT DS    F              FORM=E record count.
+FSCBWPTR DS    F              FORM=E write record number.
+FSCBRPTR DS    F              FORM=E read record number.
+FSCBLEN  EQU   *-FSCBD
+         SPACE 1
+*        FSCBFLG bits
+FSCBFEPL EQU   X'20'          FORM=E specified.
          TITLE 'Permanent storage.'
          PLUPRM ,
          TITLE 'Working storage.'
@@ -303,6 +472,8 @@ WRKUSAVE DS    F              Address of USERSAVE for nucext.
 WRKLEND  DS    F              Size of this WRKSECT in doublewords.
          SPACE 1
 WRKPLST1 DS    0D             Assorted plists, sharing space.
+WRKDSKPL DS    XL(FSCBLEN)    File I/O plist.
+         ORG   WRKPLST1
 WRKLEDPL LINEDIT MF=L,MAXSUBS=3  LINEDIT plist.
          ORG   WRKPLST1
 WRKNXCPL NUCEXT CLR,MF=L      NUCEXT CLR plist.

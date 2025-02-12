@@ -1,3 +1,4 @@
+C0013 - Pipelines uses FS* macros with FORM=E.
 C0012 - CONSOLE, CP, EMSG, LISTPDS, MEMBERS, PDSDIRECT, STACK, STEM,
         STRLITERAL, SUBCOM, VAR, VARLOAD, XRANGE work.
 C0011 - Infinite loop getting WAITRD RC=2 from CONSOLE stage at start of

@@ -243,3 +243,21 @@ REXXUNIT PIPDEVDR:TestEmsgOff PIPDEVDR:TestStackInput PIPDEVDR:TestStackOutput
 REXXUNIT PIPDEVDR:TestStem PIPDEVDR:TestStrliteral PIPDEVDR:TestSubcom
 REXXUNIT PIPDEVDR:TestVar PIPDEVDR:TestVarload PIPDEVDR:TestXrange
 --------------------------------------------------------------------------------
+Date: 2025-02-12
+Num: 13
+Issue: Pipelines uses FS* macros with FORM=E.
+
+VM/370 CMS doesn't support the FORM=E FS* macros, except to ignore
+the FORM= parameter at assembly time.
+
+Test:
+PLUNGER ENABLE
+PIPE < PIPEPREP EXEC A | CONSOLE
+
+Fix:
+Wrote nucleus extensions to wrap the CMS code that handles the FS* macros.
+They transform the FORM=E parameters to the VM/370 style, and transform any
+returned values accordingly.  EPOINT, ESTATE, ESTATEW, RDBUF and WRBUF (via
+XXBUF).
+
+--------------------------------------------------------------------------------
