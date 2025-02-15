@@ -261,3 +261,19 @@ returned values accordingly.  EPOINT, ESTATE, ESTATEW, RDBUF and WRBUF (via
 XXBUF).
 
 --------------------------------------------------------------------------------
+Date: 2025-02-15
+Num: 14
+Issue: PIPDSR120E Return code 1 from parameter list RDBUF RXUTEMP EXEC 01.
+
+Pipelines uses a newer mapping for FVS, and gets the disk letter from
+the wrong location as a result.
+
+Test:
+PLUNGER ENABLE
+PIPE < PIPEPREP EXEC A | CONSOLE
+
+Fix:
+Wrote ZAP005 in PLUZAP ASSEMBLE to fix reference to L Rx,AFVS / L Ry,STATER0 to
+use offset X'200' for STATER0, not X'220'.
+
+--------------------------------------------------------------------------------

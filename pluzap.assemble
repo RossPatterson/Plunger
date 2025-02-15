@@ -200,6 +200,16 @@ ZAP004   DS    0X
          $ZAP  REP,8666,0000              DC    H'0'
          $ZAP  RESET
          EJECT ,
+ZAP005   DS    0X
+*
+*        PIPMOD uses a newer version of FVS than VM/370's, and gets
+*        STATER0 from the wrong place.
+*
+         $ZAP  VER,E2B0,58500600          L    R5,AFVS
+         $ZAP  VER,E2B4,58805220          L    R8,STATER0   @ X'220'
+         $ZAP  REP,E2B4,58805200          L    R8,STATER0   @ X'200'
+         $ZAP  RESET
+         EJECT ,
          $ZAP  END
          LTORG ,
          TITLE 'ZAP details.'
