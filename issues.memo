@@ -292,3 +292,12 @@ Fix:
 Wrote DMSFNSMC wrapper in PLUFNC ASSEMBLE to call FINIS instead.
 
 --------------------------------------------------------------------------------
+Date: 2025-02-21
+Num: 16
+Issue: < (disk read), LISTPDS, MEMBERS, and PDSDIRECT work.
+
+Test:
+REXXUNIT PIPDEVDR:TestDiskRead PIPDEVDR:TestListpds PIPDEVDR:TestMembers
+REXXUNIT PIPDEVDR:TestPdsdirect
+
+--------------------------------------------------------------------------------

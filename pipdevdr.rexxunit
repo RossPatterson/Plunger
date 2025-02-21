@@ -50,6 +50,19 @@ TestCp:
    Call AssertStemIdentical 'Ref.', 'Out.'
    Return
 
+TestDiskRead:
+   Parse source . . MyFn .
+   MySize = SourceLine()
+   'PIPE <' MyFn 'EXEC A |stem Out.'
+   Call AssertEqual MySize, Out.0
+   Do I = 1 to Out.0
+      Source = SourceLine(I)
+      /* CMS files can't have empty records, so REXXUNIT pads them to " " */
+      If Source == '' then Source = ' '
+      Call AssertIdentical Source, Out.I, 'Source line #' || I
+   End
+   Return
+
 TestEmsgOn:
    Msg = 'ABCDEF001I This is only a test.'
    OldEMsg = SaveSetEmsg()
@@ -88,6 +101,46 @@ TestEmsgOff:
    'SET EMSG' OldEMsg
    Call AssertEqual 1, O.0
    Call AssertIdentical Msg, O.1
+   Return
+
+TestListpds:
+   MemberNames = 'FSREAD FSWRITE'
+   'PIPE listpds cmslib maclib s | stem out.'
+   Call AssertNotEqual 0, Out.0
+   Found = 0
+   Do I = 1 to Out.0
+      Parse var Out.I Member .
+      If WordPos(Member, MemberNames) > 0 then Found = Found + 1
+   End
+   Call AssertEqual Words(MemberNames), Found
+   Return
+
+TestMembers:
+   MacroNames = 'fsread fswrite'
+   'PIPE members cmslib maclib s' MacroNames '| stem out.'
+   Call AssertNotEqual 0, Out.0
+   J = 0
+   Do I = 1 to Words(MacroNames)
+      MacroName = Translate(Word(MacroNames, I))
+      J = J + 1
+      Call AssertTrue J <= Out.0
+      Call AssertEqual 'MACRO', Word(Out.J, 1)
+      J = J + 1
+      Call AssertTrue J <= Out.0
+      Call AssertEqual MacroName, Word(Out.J, 2)
+      Do J = J to Out.0 while Out.J <> ''
+         /* Skip macro contents */
+      End
+   End
+   Call AssertEqual Out.0, J
+   Return
+
+TestPdsdirect:
+   'PIPE pdsdirect dmmmac maclib s | stem Out.'
+   Call AssertEqual 3, Out.0
+   Call AssertIdentical "DMSLIB", Left(Out.1, 6)
+   Call AssertIdentical "MSGP    ", Left(Out.2, 8)
+   Call AssertIdentical "DMMMAC", Left(Out.3, 6)
    Return
 
 TestStackInput:
@@ -146,6 +199,12 @@ TestVarload:
 TestXrange:
    'PIPE xrange 00-ff | var OUT'
    Call AssertIdentical XRange('00'x, 'ff'x), Out
+   Return
+
+Erase:
+   'SET CMSTYPE HT'
+   Call NoError 'ERASE' Arg(1)
+   'SET CMSTYPE RT'
    Return
 
 SaveSetEmsg: Procedure expose $RXU.
