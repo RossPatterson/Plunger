@@ -277,3 +277,18 @@ Wrote ZAP005 in PLUZAP ASSEMBLE to fix reference to L Rx,AFVS / L Ry,STATER0 to
 use offset X'200' for STATER0, not X'220'.
 
 --------------------------------------------------------------------------------
+Date: 2025-02-21
+Num: 15
+Issue: < (disk input) stage uses DMSFNSMC to close files.
+
+VM/SP supported "DMSFNSMC" as a close command, similar to "FINIS".  Don't
+know if there was any difference, but maybe something SFS-related?
+
+Test:
+PLUNGER ENABLE
+PIPE < PIPEPREP EXEC A | CONSOLE
+
+Fix:
+Wrote DMSFNSMC wrapper in PLUFNC ASSEMBLE to call FINIS instead.
+
+--------------------------------------------------------------------------------

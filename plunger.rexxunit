@@ -81,7 +81,7 @@ TestDebugNotEnabled:
    Return
 
 TestDisable:
-   ExpectedDifference = 9
+   ExpectedDifference = 10
    'PLUNGER ENABLE'
    'WITHSTEM OUTPUT NBEFORE. COMMAND NUCXMAP'
    'WITHSTEM OUTPUT O. COMMAND PLUNGER DISABLE'
@@ -106,7 +106,7 @@ TestDisableTwice:
    Return
 
 TestEnable:
-   ExpectedDifference = 10 /* 9 functions + PLUNGER */
+   ExpectedDifference = 11 /* 10 functions + PLUNGER */
    'WITHSTEM OUTPUT NBEFORE. COMMAND NUCXMAP'
    'WITHSTEM OUTPUT O. COMMAND PLUNGER ENABLE'
    Call AssertEqual 0, O.0
@@ -161,7 +161,7 @@ TestPurge:
 
 TestReset:
    /* PLUNGER treats the NUCXDROP warning as DISABLE. */
-   ExpectedDifference = 10 /* 9 functions + PLUNGER */
+   ExpectedDifference = 11 /* 10 functions + PLUNGER */
    'PLUNGER ENABLE'
    'WITHSTEM OUTPUT NBEFORE. COMMAND NUCXMAP'
    'NUCXDROP PLUNGER'

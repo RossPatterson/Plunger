@@ -1,3 +1,4 @@
+C0015 - < (disk input) stage uses DMSFNSMC to close files.
 C0014 - PIPDSR120E Return code 1 from parameter list RDBUF RXUTEMP EXEC 01.
 C0013 - Pipelines uses FS* macros with FORM=E.
 C0012 - CONSOLE, CP, EMSG, LISTPDS, MEMBERS, PDSDIRECT, STACK, STEM,

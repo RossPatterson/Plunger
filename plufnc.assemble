@@ -130,6 +130,7 @@ MSG022   DS    0H
 FUNCTBL  DS    0D
          $FUNC ABNEXIT
 FUNCLEN  EQU   *-FUNCTBL
+         $FUNC DMSFNSMC       Another name for FINIS.
          $FUNC EPOINT
          $FUNC ESTATE
          $FUNC ESTATEW
@@ -182,6 +183,18 @@ ABNXRES  DS    0H
          USING PRMSECT,R10
          NI    PRMFLAG1,255-PRMF1ABN  Allow further calls.
          BR    R14
+         POP   USING
+         TITLE 'DMSFNSMC - FINIS from late VM/SP.'
+         PUSH  USING
+DMSFNSMC $ENTER ,
+         SPACE 3
+         LR    R3,R1          Tokenized PLIST.
+         MVC   WRKDSKPL,0(R3) Copy DMSFNSMC plist.
+         MVC   WRKDSKPL(8),=CL8'FINIS'  Call FINIS instead.
+         LA    R1,WRKDSKPL    Issue FINIS
+         SVC   202
+         DC    AL4(1)
+         $EXIT ,
          POP   USING
          TITLE 'EPOINT - Move the read/write file pointers.'
          PUSH  USING

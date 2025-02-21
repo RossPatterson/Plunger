@@ -57,6 +57,13 @@ TestAbnExit:
    Call Erase 'TAEX * A'
    Return
 
+TestDMSFNSMC:
+   Call Erase 'TDF DATA A'
+   'EXECIO 1 DISKW TDF DATA A (STRING blah blah blah'
+   'DMSFNSMC TDF DATA A'
+   Call Erase 'TDF DATA A'
+   Return
+
 TestEPointRead:
    Call Erase 'TEPR * A'
    I=0
