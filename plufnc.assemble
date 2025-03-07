@@ -335,6 +335,8 @@ SVCHND   DS    0H
          USING PLUFNC,R12             base.
          CLI   SVCOPSW+3,199  Is it our Patch SVC?
          BE    SVC199         Yes, handle it.
+         CLI   SVCOPSW+3,204  Is it CMSCALL?
+         BE    SVC204         Yes, handle it.
 SVCHPASS DS    0H
          L     R10,NUCPLUPT
          USING PRMSECT,R10
@@ -374,6 +376,31 @@ S199DI00 DS    0H             DIAG 0000 patch.
          ST    R15,LOWSAVE+(15*4)  Pass back length.
          OI    24(R14),X'80'  Turn on the VM/SP bit.
          B     SVCHRTRN       Return from SVC 199.
+         TITLE 'SVC204 - Handle a CMSCALL.'
+SVC204   DS    0H
+         LM    R0,R1,LOWSAVE  Get parameter regs.
+         L     R10,NUCPLUPT     Get perm data area.
+         USING PRMSECT,R10
+         OC    PRMCCPSW,PRMCCPSW  Are we inside a 204?
+         BZ    *+8            No, skip.
+         DC    H'0,3'           Yes, recursion is fatal.
+         MVC   PRMCCPSW,SVCOPSW  Save return PSW.
+         LM    R0,R15,LOWSAVE  Get caller's regs.
+         DROP  R12
+         ICM   R1,B'1000',LOWSAVE+(R15*4)  Get call type.
+         SVC   202            Run caller's request.
+         DC    AL4(1)         Errors come back here.
+         STM   R0,R15,LOWSAVE  Save returned regs.
+         BALR  R12,0
+         USING *,R12
+         L     R10,NUCPLUPT     Get perm data area.
+         OC    PRMCCPSW,PRMCCPSW  Are we inside a 204?
+         BNZ   *+8            Yes, skip.
+         DC    H'0,4'         No, how did we get here?
+         MVC   SVCOPSW,PRMCCPSW  Get return PSW.
+         XC    PRMCCPSW,PRMCCPSW  We aren't inside 204 anymore.
+         LM    R0,R15,LOWSAVE  Get returned regs.
+         LPSW  SVCOPSW        Return to caller.
          SPACE 3
          LTORG ,
          POP   USING

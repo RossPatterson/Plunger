@@ -1,3 +1,4 @@
+C0017 - DMSSVT121S UNSUPPORTED SVC 204 (HEX CC) CALLED FROM D5FD68.
 C0016 - < (disk read), LISTPDS, MEMBERS, and PDSDIRECT work.
 C0015 - < (disk input) stage uses DMSFNSMC to close files.
 C0014 - PIPDSR120E Return code 1 from parameter list RDBUF RXUTEMP EXEC 01.

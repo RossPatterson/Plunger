@@ -201,6 +201,33 @@ TestRdBuf:
    Call Erase 'TRB * A'
    Return
 
+TestSvc204:
+   Call Erase 'TS204 * A'
+   I=0
+   I=I+1; A.I = "TS204    START X'20000'"
+   I=I+1; A.I = "         USING *,12"
+   I=I+1; A.I = "         LR    12,15"
+   I=I+1; A.I = "         LR    2,14"
+   I=I+1; A.I = "         CNOP  4,8"
+   I=I+1; A.I = "         BAL   1,DOIT"
+   I=I+1; A.I = "         DC    CL8'STATE'"
+   I=I+1; A.I = "         DC    CL8'PLUNFUNC'"
+   I=I+1; A.I = "         DC    CL8'REXXUNIT'"
+   I=I+1; A.I = "         DC    CL8'A'"
+   I=I+1; A.I = "         DC    8X'FF'"
+   I=I+1; A.I = "DOIT     L     15,CALLTYP"
+   I=I+1; A.I = "         SVC   204"
+   I=I+1; A.I = "         SR    15,15"
+   I=I+1; A.I = "         BR    2"
+   I=I+1; A.I = "         DS    0D"
+   I=I+1; A.I = "CALLTYP  DC    X'01000000'"
+   I=I+1; A.I = "         END"
+   A.0 = I
+   Call Assemble 'A.', 'TS204'
+   'LOAD TS204 ( START'
+   Call Erase 'TS204 * A'
+   Return
+
 TestWaitRd:
    Call Erase 'TWRD * A'
    I=0

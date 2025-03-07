@@ -3,6 +3,7 @@
 PRMSECT  DSECT ,
 PRMPGMNP DS    D              CMS's PGMNEW PSW.
 PRMSVCNP DS    D              CMS's SVCNEW PSW.
+PRMCCPSW DS    D              SVC204 (CMSCALL) return PSW.
 PRMABNEX DS    A              ABNEXIT handler.
 PRMABNUW DS    F              ABNEXIT user word.
 PRMPIPMD DS    A              PIPMOD address.
