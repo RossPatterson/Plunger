@@ -158,6 +158,51 @@ TestEStateW:
    Call Erase 'TESW DATA A'
    Return
 
+TestGlobalVNoSelect:
+   'GLOBALV BANANA'
+   Call AssertEqual 0, Queued()
+   Return
+
+TestGlobalVExtraParms:
+   Call NoError 'GLOBALV SELECT KUMQUAT APPLE FNORD'
+   Call AssertEqual 4, RC
+   Return
+
+TestGlobalVUknownPool:
+   'GLOBALV SELECT KUMQUAT STACK BLUETTE'
+   Call AssertEqual 1, Queued()
+   Parse pull Value
+   Call AssertIdentical '', Value
+   Return
+
+TestGlobalVFplUnknownVar:
+   'GLOBALV SELECT FPL STACK DEADBEEF'
+   Call AssertEqual 1, Queued()
+   Parse pull Value
+   Call AssertIdentical '', Value
+   Return
+
+TestGlobalVFplStyle:
+   'GLOBALV SELECT FPL STACK STYLE'
+   Call AssertEqual 1, Queued()
+   Parse pull Value
+   Call AssertIdentical 'FPL', Value
+   Return
+
+TestGlobalVFplRepo:
+   'GLOBALV SELECT FPL STACK REPOSITORY'
+   Call AssertEqual 1, Queued()
+   Parse pull Value
+   Call AssertIdentical '-', Value
+   Return
+
+TestGlobalVFpltrap:
+   'GLOBALV SELECT FPLTRAP STACK OINK'
+   Call AssertEqual 1, Queued()
+   Parse pull Value
+   Call AssertIdentical '', Value
+   Return
+
 TestRdBuf:
    Call Erase 'TRB * A'
    I=0

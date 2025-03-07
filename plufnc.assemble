@@ -134,6 +134,7 @@ FUNCLEN  EQU   *-FUNCTBL
          $FUNC EPOINT
          $FUNC ESTATE
          $FUNC ESTATEW
+         $FUNC GLOBALV
 *        $FUNC PGMHND         Only called via PGMNPSW.
 *        $FUNC SVCHND         Only called via SVCNPSW.
          $FUNC RDBUF
@@ -266,6 +267,64 @@ STATERIT BAL   R14,MSG021     "Record number <n> is too large"
 STATERNR BAL   R14,MSG022     "Record count <n> is too large"
          B     STATEXIT       Exit.
          DROP  R3
+         POP   USING
+         TITLE 'GLOBALV - Get/set global variables'
+         PUSH  USING
+GLOBALV  $ENTER ,
+*
+*        Support getting a specific few GLOBALVs through the stack.
+*              FPL/STYLE = 'FPL'
+*              FPL/REPOSITOry = '-'
+*              FPLTRAP/* = ''
+*              */* = ''
+*
+         SPACE 3
+         LR    R3,R1          Tokenized PLIST.
+         CLC   =CL8'SELECT',8(R3)  "GLOBALV SELECT"?
+         BNE   GBLVOK         No, just say OK.
+         LA    R15,4          "Invalid GLOBALV function function"
+         CLC   =CL8'STACK',24(R3)  "GLOBALV SELECT ... STACK"?
+         BNE   GBLVEXIT       No, error.
+         CLI   40(R3),X'FF'   "GLOBALV SELECT ... STACK ... fnc"?
+         BNE   GBLVEXIT       No, error.
+         CLC   =CL8'FPL',16(R3)  "GLOBALV SELECT FPL STACK"?
+         BE    GBLVSFPL       Yes, check var.
+         CLC   =CL8'FPLTRAP',16(R3)  "GLOBALV SELECT FPLTRAP STACK"?
+         BE    GBLVSFPT       Yes, check var.
+         B     GBLVSUNS       No, some unsupported STACK request.
+         SPACE 3
+GBLVSFPL DS    0H
+         LA    R1,=C'FPL'     Assume it's
+         ICM   R1,B'1000',=X'03'   SELECT FPL GET STYLE.
+         CLC   =CL8'STYLE',32(R3)  Is it?
+         BE    GBLVSTAK       Yes, stack our answer.
+         LA    R1,=C'-'       Assume it's
+         ICM   R1,B'1000',=X'01'   SELECT FPL GET REPOSITORY.
+         CLC   =CL8'REPOSITO',32(R3)  Is it?
+         BE    GBLVSTAK       Yes, stack our answer.
+         SR    R1,R1          No, stack an
+         B     GBLVSTAK         empty value.
+         SPACE 3
+GBLVSFPT DS    0H
+         SR    R1,R1          Stack an
+         B     GBLVSTAK         empty value.
+         SPACE 3
+GBLVSUNS DS    0H
+         SR    R1,R1          Stack an empty value.
+         SPACE 3
+GBLVSTAK DS    0H
+         MVC   WRKATTPL(8),=CL8'ATTN'  Set
+         MVC   WRKATTPL+8(4),=CL4'LIFO'  up
+         ST    R1,WRKATTPL+12               plist.
+         LA    R1,WRKATTPL    Stack
+         SVC   202               response.
+         DC    AL4(1)
+         B     GBLVEXIT
+         SPACE 3
+GBLVOK   DS    0H
+         SR    R15,R15
+GBLVEXIT DS    0H
+         $EXIT ,
          POP   USING
          TITLE 'PGMHND - Persistent Program Check handler'
          PUSH  USING
@@ -512,6 +571,8 @@ WRKUSAVE DS    F              Address of USERSAVE for nucext.
 WRKLEND  DS    F              Size of this WRKSECT in doublewords.
          SPACE 1
 WRKPLST1 DS    0D             Assorted plists, sharing space.
+WRKATTPL DS    CL8,CL4,F      ATTN plist.
+         ORG   WRKPLST1
 WRKDSKPL DS    XL(FSCBLEN)    File I/O plist.
          ORG   WRKPLST1
 WRKLEDPL LINEDIT MF=L,MAXSUBS=3  LINEDIT plist.

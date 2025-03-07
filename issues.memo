@@ -324,3 +324,27 @@ Fix:
 Wrote SVC handler (SVC204) in PLUFNC ASSEMBLE to convert 204 to 202.
 
 --------------------------------------------------------------------------------
+Date: 2025-03-09
+Num: 18
+Issue: PIPMSG1167I Cannot load message repository [random chars].
+
+PIPDSK118E Return code 24 from renaming the file.
+PIPMSG1167I Cannot load message repository .........
+PIPMSG003I ... Issued from stage 2 of pipeline 1.
+PIPMSG001I ... Running "> Z Z A".
+DMSSVT121S UNSUPPORTED SVC 204 (HEX CC) CALLED FROM DF6A80.
+PIPDSK727I RENAME Z Z A1 00008F78 CMSUT2 = ( NOUPDIR.
+
+Pipelines uses the "FPL" GLOBALV pool to store some configuration
+values, but VM/370 CMS doesn't have GLOBALV.
+
+Test:
+PLUNGER ENABLE
+PIPE < PIPEPREP EXEC A | > Z Z A
+PIPE < PIPEPREP EXEC A | > Z Z A
+
+Fix:
+Implemented GLOBALV stub to return constant results for certain
+variables in the "FPL" and "FPLTRAP" pools.
+
+--------------------------------------------------------------------------------
