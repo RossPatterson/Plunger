@@ -387,3 +387,12 @@ Fix:
 Wrote ZAP006 in PLUZAP ASSEMBLE to specify "(NOUPDIRT" instead of "(NOUPDIR".
 
 --------------------------------------------------------------------------------
+Date: 2025-03-09
+Num: 21
+Issue: > (disk write) works.
+
+Test:
+REXXUNIT PIPDEVDR:TestDiskAppend PIPDEVDR:TestDiskWriteNew
+REXXUNIT PIPDEVDR:TestDiskWriteReplace
+
+--------------------------------------------------------------------------------

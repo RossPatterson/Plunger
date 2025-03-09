@@ -1,3 +1,4 @@
+C0021 - > (disk write) works.
 C0020 - FPLDSK118E Return code 24 from renaming the file.
 C0019 - Pipelines uses LINERD to read GLOBALV results, not RDTERM / WAITRD.
 C0018 - PIPMSG1167I Cannot load message repository [random chars].

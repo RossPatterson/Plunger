@@ -63,6 +63,48 @@ TestDiskRead:
    End
    Return
 
+TestDiskAppend:
+   OutFile = 'TDWA CMSUT1 A'
+   Line1 = 'Alas, poor Yorik.'
+   'EXECIO 1 DISKW' OutFile '(FINIS STRING' Line1
+   In.0 = 2
+   In.1 = 'Now is the winter of our discontent'
+   In.2 = 'Made glorious summer by this son of York'
+   'PIPE stem In. | >>' OutFile
+   'EXECIO * DISKR' OutFile '(STEM OUT.'
+   Call Erase OutFile
+   Call AssertEqual In.0 + 1, Out.0
+   Call AssertIdentical '1:' Line1, '1:' Out.1
+   Do I = 1 to In.0
+      J = I + 1
+      Call AssertIdentical J':' In.I, J':' Out.J
+   End
+   Return
+
+TestDiskWriteNew:
+   OutFile = 'TDWN CMSUT1 A'
+   Call Erase OutFile
+   In.0 = 2
+   In.1 = 'Now is the winter of our discontent'
+   In.2 = 'Made glorious summer by this son of York'
+   'PIPE stem In. | >' OutFile
+   'EXECIO * DISKR' OutFile '(STEM OUT.'
+   Call Erase OutFile
+   Call AssertStemIdentical 'In.', 'Out.'
+   Return
+
+TestDiskWriteReplace:
+   OutFile = 'TDWR CMSUT1 A'
+   'EXECIO 1 DISKW' OutFile '(FINIS STRING Output from EXECIO'
+   In.0 = 2
+   In.1 = 'Now is the winter of our discontent'
+   In.2 = 'Made glorious summer by this son of York'
+   'PIPE stem In. | >' OutFile
+   'EXECIO * DISKR' OutFile '(STEM OUT.'
+   Call Erase OutFile
+   Call AssertStemIdentical 'In.', 'Out.'
+   Return
+
 TestEmsgOn:
    Msg = 'ABCDEF001I This is only a test.'
    OldEMsg = SaveSetEmsg()
