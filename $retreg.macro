@@ -1,0 +1,10 @@
+         MACRO ,
+&LABEL   $RETREG &REG=,&VALUE=
+.*
+.*       Some later-era CMS functions return values in other than R15.
+.*       CMSCALL knows how to do that, but little (or nothing?) in
+.*       VM/370 does.  We do it this way...
+.*
+&LABEL   L     R15,CURRSAVE   Find SVC savearea that called us.
+         ST    &VALUE(1),EGP&REG-SSAVE(,R15)  Pass value back.
+         MEND  ,

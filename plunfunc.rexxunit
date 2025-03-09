@@ -203,6 +203,44 @@ TestGlobalVFpltrap:
    Call AssertIdentical '', Value
    Return
 
+TestLineRd:
+   Call Erase 'TLR * A'
+   I=0
+   I=I+1; A.I = "TLR      START X'20000'"
+   I=I+1; A.I = "         USING *,12"
+   I=I+1; A.I = "         LR    12,15"
+   I=I+1; A.I = "         LR    2,14"
+   I=I+1; A.I = "*        LINERD DATA=(BUFFER,L'BUFFER),CASE=UPPER,PAD=BLANK"
+   I=I+1; A.I = "         CNOP  0,4"
+   I=I+1; A.I = "         BAL   1,DOIT"
+   I=I+1; A.I = "         DC    CL8'LINERD'"
+   I=I+1; A.I = "         DC    A(BUFFER)"
+   I=I+1; A.I = "         DC    A(L'BUFFER)"
+   I=I+1; A.I = "         DC    4A(0)"
+   I=I+1; A.I = "         DC    F'0'"
+   I=I+1; A.I = "         DC    B'11001111'  PAD=BLANK,CASE=UPPER"
+   I=I+1; A.I = "         DC    X'00'        TYPE=not DIRECT"
+   I=I+1; A.I = "         DC    XL2'0'"
+   I=I+1; A.I = "         DC    2F'0'"
+   I=I+1; A.I = "DOIT     SVC   202"
+   I=I+1; A.I = "         DC    AL4(RETURN)"
+   I=I+1; A.I = "         LA    15,901"
+   I=I+1; A.I = "         C     0,=F'29'"
+   I=I+1; A.I = "         BNE   RETURN"
+   I=I+1; A.I = "         LA    15,902"
+   I=I+1; A.I = "         CLC   =C'NOWISTHEWINTEROFOURDISCONTENT',BUFFER"
+   I=I+1; A.I = "         BNE   RETURN"
+   I=I+1; A.I = "         SR    15,15"
+   I=I+1; A.I = "RETURN   BR    2"
+   I=I+1; A.I = "BUFFER   DS    CL80"
+   I=I+1; A.I = "         END"
+   A.0 = I
+   Call Assemble 'A.', 'TLR'
+   Queue 'NowIsTheWinterOfOurDiscontent'
+   'LOAD TLR ( START'
+   Call Erase 'TLR * A'
+   Return
+
 TestRdBuf:
    Call Erase 'TRB * A'
    I=0

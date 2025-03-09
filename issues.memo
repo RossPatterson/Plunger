@@ -348,3 +348,23 @@ Implemented GLOBALV stub to return constant results for certain
 variables in the "FPL" and "FPLTRAP" pools.
 
 --------------------------------------------------------------------------------
+Date: 2025-03-09
+Num: 19
+Issue: Pipelines uses LINERD to read GLOBALV results, not RDTERM / WAITRD.
+
+PIPDSK118E Return code 24 from renaming the file.
+PIPMSG1167I Cannot load message repository uses 327.
+PIPMSG003I ... Issued from stage 2 of pipeline 1.
+PIPMSG001I ... Running "> Z Z A".
+PIPDSK727I RENAME Z Z A1 00EE5D10 CMSUT2 = ( NOUPDIR.
+
+Test:
+PLUNGER ENABLE
+PIPE < PIPEPREP EXEC A | > Z Z A
+PIPE < PIPEPREP EXEC A | > Z Z A
+
+Fix:
+Implemented LINERD in PLUFNC ASSEMBLE as a thin wrapper around WAITRD,
+approximating some of LINERD's options as RDTERM / WAITRD options.
+
+--------------------------------------------------------------------------------

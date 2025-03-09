@@ -1,3 +1,4 @@
+C0019 - Pipelines uses LINERD to read GLOBALV results, not RDTERM / WAITRD.
 C0018 - PIPMSG1167I Cannot load message repository [random chars].
 C0017 - DMSSVT121S UNSUPPORTED SVC 204 (HEX CC) CALLED FROM D5FD68.
 C0016 - < (disk read), LISTPDS, MEMBERS, and PDSDIRECT work.

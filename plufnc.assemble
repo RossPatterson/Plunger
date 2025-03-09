@@ -135,6 +135,7 @@ FUNCLEN  EQU   *-FUNCTBL
          $FUNC ESTATE
          $FUNC ESTATEW
          $FUNC GLOBALV
+         $FUNC LINERD
 *        $FUNC PGMHND         Only called via PGMNPSW.
 *        $FUNC SVCHND         Only called via SVCNPSW.
          $FUNC RDBUF
@@ -325,6 +326,96 @@ GBLVOK   DS    0H
          SR    R15,R15
 GBLVEXIT DS    0H
          $EXIT ,
+         POP   USING
+         TITLE 'LINERD - Read from console or stack'
+         PUSH  USING
+         USING NUCON,0
+LINERD   $ENTER DATALEN=256
+*
+*        Support LINERD FORM=SINGLE, as much as RDTERM can.
+*
+         SPACE 3
+         LR    R3,R1          Tokenized PLIST.
+         USING LRPLIST,R3
+         XC    WRKPLSTS,WRKPLSTS
+         MVC   WRKRDTPL(8),=CL8'WAITRD'  Set command.
+         LA    R1,WRKDATA
+         ST    R1,WRKRDTPL+8
+         MVI   WRKRDTPL+8,X'01'    Set constant.
+         MVC   WRKRDTPL+12(4),LRPDATAL  Set buffer length.
+         CLC   LRPDATAL,=F'256'  Too big?
+         BNH   *+8             No, skip.
+         DC    H'0,5'          Yes, that's fatal (for now?)
+*
+*        Set first code byte.  RDTERM only allows certain
+*        combinations, we'll approximate the rest.
+*
+         TM    LRPFLAG1,LRP1PAD  PAD=BLANK?
+         BNO   LINRF001       No, skip.
+         TM    LRPFLAG1,LRP1UPPR  CASE=UPPER?
+         BZ    LINRF001       No, skip.
+         MVI   WRKRDTPL+12,C'U'  Yes, that's EDIT=YES.
+         B     LINRFEND       Flags are done.
+LINRF001 DS    0H
+         SPACE 1
+         TM    LRPFLAG1,LRP1PAD  PAD=BLANK?
+         BNO   LINRF002       No, skip.
+         MVI   WRKRDTPL+12,C'S'  Yes, that's EDIT=PAD.
+         B     LINRFEND       Flags are done.
+LINRF002 DS    0H
+         SPACE 1
+         TM    LRPFLAG1,LRP1UPPR  CASE=UPPER?
+         BZ    LINRF003       No, skip.
+         MVI   WRKRDTPL+12,C'V'  Yes, that's EDIT=UPCASE.
+         B     LINRFEND       Flags are done.
+LINRF003 DS    0H
+         SPACE 1
+         TM    LRPFLAG1,LRP1PAD  PAD=NONE?
+         BNZ   LINRF004       No, skip.
+         MVI   WRKRDTPL+12,C'T'  Yes, that's EDIT=NO.
+         B     LINRFEND       Flags are done.
+LINRF004 DS    0H
+         SPACE 1
+         TM    LRPFLAG2,LRP2ATTR  ATTREST=YES?
+         BZ    LINRF005       No, skip.
+         MVI   WRKRDTPL+12,C'*'  Yes, that's EDIT=PHYS,ATTREST=YES.
+         B     LINRFEND       Flags are done.
+LINRF005 DS    0H
+         SPACE 1
+         TM    LRPFLAG2,LRP2ATTR  ATTREST=YES?
+         BO    LINRF006       No, skip.
+         MVI   WRKRDTPL+12,C'$'  Yes, that's EDIT=PHYS,ATTREST=NO.
+         B     LINRFEND       Flags are done.
+LINRF006 DS    0H
+         SPACE 1
+         MVI   WRKRDTPL+12,C'X'  None of the above, EDIT=PHYS.
+         B     LINRFEND       Flags are done.
+         SPACE 1
+LINRFEND DS    0H
+*        Set second code byte.
+         IC    R0,LRPFLAG1    Get TYPE=
+         N     R0,=A(LRP1TYPE)   flag.
+         CLM   R0,B'0001',=AL1(LRPTYPDI)   TYPE=DIRECT?
+         BNE   *+8            No, skip.
+         MVI   WRKRDTPL+13,C'D'  Yes, set it.
+         SPACE 3
+         LA    R1,WRKRDTPL    Issue RDTERM
+         ICM   R1,B'1000',=X'04'  with NUCEXT
+         SVC   202                   bypass.
+         DC    AL4(1)
+         C     R15,=F'2'      Bad parms?
+         BE    LINRBADP       Yes, tell caller.
+         LH    R1,WRKRDTPL+14  Get # bytes read.
+         $RETREG REG=R0,VALUE=(R1)  Pass # bytes read back in R0
+         BCTR  R1,0           Move data
+         L     R2,LRPDATAA       data to
+         MVC   0(*-*,R2),WRKDATA    callers
+         EX    R1,*-6                  buffer.
+         SR    R15,R15        All is well.
+LINREXIT $EXIT ,
+         SPACE 3
+LINRBADP LA    R15,24         LINERD's version of RC=2
+         B     LINREXIT       Return to caller.
          POP   USING
          TITLE 'PGMHND - Persistent Program Check handler'
          PUSH  USING
@@ -562,6 +653,34 @@ FSCBLEN  EQU   *-FSCBD
          SPACE 1
 *        FSCBFLG bits
 FSCBFEPL EQU   X'20'          FORM=E specified.
+         TITLE 'LINERD PLIST.'
+LRPLIST  DSECT ,
+LRPCMD   DS    CL8            'LINERD'
+LRPDATAA DS    A              Address of data buffer
+LRPDATAL DS    F              Length of data buffer
+LRPVSCRA DS    A              Address of VSceeen name
+LRPLINEA DS    A              Address of line number
+LRPCOLA  DS    A              Address of column number
+LRPPROMA DS    A              Address of prompt text
+LRPPROML DS    F              Length of prompt text
+LRPFLAG1 DS    X              Flags:
+LRP1PAD  EQU   B'11000000'       Padding type
+LRP1TYPE EQU   B'00111000'       Input type
+LRP1LOG  EQU   B'00000100'       LOGICAL=YES?
+LRP1TRAN EQU   B'00000010'       TRANSLATE=YES?
+LRP1UPPR EQU   B'00000001'       CASE=UPPER?
+LRPFLAG2 DS    X              Flags:
+LRP2WAIT EQU   B'10000000'       WAIT=YES?
+LRP2ATTR EQU   B'01000000'       ATTREST=YES?
+*  Values for LRP1PAD:
+LRPPADBL EQU   B'11000000'    PAD=BLANK
+LRPPADNL EQU   B'01000000'    PAD=NULL
+LRPPADNO EQU   B'00000000'    PAD=NONE
+*  Values for LRP1TYP:
+LRPTYPDI EQU   B'00100000'    TYPE=DIRECT
+LRPTYPIV EQU   B'00010000'    TYPE=INVSIBLE
+LRPTYPST EQU   B'00001000'    TYPE=STACK
+LRPTYPNS EQU   B'00000000'    TYPE=NOSTACK
          TITLE 'Permanent storage.'
          PLUPRM ,
          TITLE 'Working storage.'

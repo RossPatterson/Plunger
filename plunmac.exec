@@ -2,6 +2,7 @@
  &1 &2 $ENTER   MACRO
  &1 &2 $EXIT    MACRO
  &1 &2 $FUNC    MACRO
+ &1 &2 $RETREG  MACRO
  &1 &2 $ZAP     MACRO
  &1 &2 PLUCONFG COPY
  &1 &2 PLUPRM   MACRO
