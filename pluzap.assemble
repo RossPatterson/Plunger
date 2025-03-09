@@ -210,6 +210,15 @@ ZAP005   DS    0X
          $ZAP  REP,E2B4,58805200          L    R8,STATER0   @ X'200'
          $ZAP  RESET
          EJECT ,
+ZAP006   DS    0X
+*
+*        PIPMOD calls RENAME (NOUPDIR, but VM/370 R6 expects (NOUPDIRT.
+*
+         $ZAP  VER,DA58,D9C5D5C1D4C54040  DC   CL8'RENAME  '
+         $ZAP  VER,DA80,D5D6E4D7C4C9D940  DC   CL8'NOUPDIR '
+         $ZAP  REP,DA80,D5D6E4D7C4C9D9E3  DC   CL8'NOUPDIRT'
+         $ZAP  RESET
+         EJECT ,
          $ZAP  END
          LTORG ,
          TITLE 'ZAP details.'

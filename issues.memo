@@ -368,3 +368,22 @@ Implemented LINERD in PLUFNC ASSEMBLE as a thin wrapper around WAITRD,
 approximating some of LINERD's options as RDTERM / WAITRD options.
 
 --------------------------------------------------------------------------------
+Date: 2025-03-09
+Num: 20
+Issue: FPLDSK118E Return code 24 from renaming the file.
+
+PIPMOD has two cases where it tries to issue a CMS RENAME command
+with the "NOUPDIRT" option.  The ">" driver, when replacing a file,
+does so but specifies the option as "NOUPDIR".  The VM/370 R6
+version of DMSRNM incorrectly tests for the abbreviation "NOUP",
+leading to "NOUPDIR" being rejected.
+
+Test:
+PLUNGER ENABLE
+PIPE < PIPEPREP EXEC A | > Z Z A
+PIPE < PIPEPREP EXEC A | > Z Z A
+
+Fix:
+Wrote ZAP006 in PLUZAP ASSEMBLE to specify "(NOUPDIRT" instead of "(NOUPDIR".
+
+--------------------------------------------------------------------------------
