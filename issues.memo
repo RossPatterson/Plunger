@@ -396,3 +396,21 @@ REXXUNIT PIPDEVDR:TestDiskAppend PIPDEVDR:TestDiskWriteNew
 REXXUNIT PIPDEVDR:TestDiskWriteReplace
 
 --------------------------------------------------------------------------------
+Date: 2025-03-12
+Num: 22
+Issue: DMSSVT121S UNSUPPORTED SVC 109 (HEX 6D) CALLED FROM E11050.
+
+"DMSSVT121S UNSUPPORTED SVC 109 (HEX 6D) CALLED FROM E11050." when
+using STORAGE stage in write mode.  According to z/OS doc, this
+is ESPIE SET and ESPIE RESET.  No idea why these would be used on
+any version of CMS.
+
+Test:
+PLUNGER ENABLE
+PIPE literal Hello CMS!|storage 20000 10 E0
+CP D T20000.10
+
+Fix:
+Wrote SVC handler (SVC109) in PLUFNC ASSEMBLE to convert ESPIE to SPIE.
+
+--------------------------------------------------------------------------------

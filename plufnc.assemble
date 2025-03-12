@@ -483,6 +483,8 @@ SVCHND   DS    0H
          LR    R12,R11          up
          SR    R12,R1              common
          USING PLUFNC,R12             base.
+         CLI   SVCOPSW+3,109  Is it ESPIE?
+         BE    SVC109         Yes, handle it.
          CLI   SVCOPSW+3,199  Is it our Patch SVC?
          BE    SVC199         Yes, handle it.
          CLI   SVCOPSW+3,204  Is it CMSCALL?
@@ -498,6 +500,36 @@ SVCHPASS DS    0H
 SVCHRTRN DS    0H
          LM    R0,R15,LOWSAVE  SVC will update any it cares to.
          LPSW  SVCOPSW        Return to caller.
+         TITLE 'SVC109 - Handle an ESPIE SVC 109.'
+SVC109   DS    0H
+         LM    R0,R1,LOWSAVE  Get parameter regs.
+         CH    R0,=H'4'       ESPIE SET?
+         BE    S109SET        Yes, do it.
+         CH    R0,=H'8'       ESPIE RESET?
+         BE    S109RSET       Yes, do it.
+         B     SVCHRTRN       None of the above, ignore it.
+         SPACE 3
+S109SET  DS    0H
+         L     R10,NUCPLUPT
+         USING PRMSECT,R10
+         XC    PRMS14PA,PRMS14PA  Clear SPIE PICA.
+         MVC   PRMS14PA+1(3),1(R1)  Set exit address.
+         MVC   PRMS14PA+4(2),4(R1)  Set interrupt list.
+         MVI   SVCOPSW+3,14   Say we got SPIE SVC 14.
+         LA    R1,PRMS14PA    Pass SPIE PICA
+         ST    R1,LOWSAVE+(1*4)  to CMS.
+         DROP  R10
+         B     SVCHPASS       Let CMS run 109 as 14.
+         SPACE 3
+S109RSET DS    0H
+         L     R10,NUCPLUPT
+         USING PRMSECT,R10
+         XC    PRMS14PA,PRMS14PA  Clear SPIE PICA.
+         MVI   SVCOPSW+3,14   Say we got SPIE SVC 14.
+         LA    R1,PRMS14PA    Pass SPIE PICA
+         ST    R1,LOWSAVE+(1*4)  to CMS.
+         DROP  R10
+         B     SVCHPASS       Let CMS run 109 as 14.
          TITLE 'SVC199 - Patch PIPMOD the hard way.'
 SVC199   DS    0H
 *

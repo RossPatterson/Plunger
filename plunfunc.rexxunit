@@ -284,6 +284,37 @@ TestRdBuf:
    Call Erase 'TRB * A'
    Return
 
+TestSvc109:
+   Call Erase 'TS109 * A'
+   I=0
+   I=I+1; A.I = "TS109    START X'20000'"
+   I=I+1; A.I = "         USING *,12"
+   I=I+1; A.I = "         LR    12,15"
+   I=I+1; A.I = "         ST    14,RETADDR"
+   I=I+1; A.I = "         LA    0,4          SET"
+   I=I+1; A.I = "         CNOP  0,4"
+   I=I+1; A.I = "         BAL   1,SET"
+   I=I+1; A.I = "         DC    X'00'"
+   I=I+1; A.I = "         DC    AL3(EXIT)"
+   I=I+1; A.I = "         DC    X'7FFF0000'"
+   I=I+1; A.I = "SET      SVC   109"
+   I=I+1; A.I = "         DC    H'0'"
+   I=I+1; A.I = "EXIT     LA    0,8          RESET"
+   I=I+1; A.I = "         SVC   109"
+   I=I+1; A.I = "RETURN   BALR  12,0"
+   I=I+1; A.I = "         USING *,12"
+   I=I+1; A.I = "         L     14,RETADDR"
+   I=I+1; A.I = "         SR    15,15"
+   I=I+1; A.I = "         BR    14"
+   I=I+1; A.I = "RETADDR  DS    A"
+   I=I+1; A.I = "         END"
+   A.0 = I
+   Call Assemble 'A.', 'TS109'
+   Call NoError 'CP DISCARD TRACE END'
+   'LOAD TS109 ( START'
+   Call Erase 'TS109 * A'
+   Return
+
 TestSvc204:
    Call Erase 'TS204 * A'
    I=0
