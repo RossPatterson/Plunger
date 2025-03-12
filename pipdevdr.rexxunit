@@ -214,6 +214,26 @@ TestStem:
    Call AssertIdentical 'Hello stem1!', Out.2
    Return
 
+TestStorageReadExplicit:
+   SysId = Storage('200', 32)
+   'PIPE storage read 200 32 | var Out'
+   Call AssertIdentical SysId, Out
+   Return
+
+TestStorageReadImplied:
+   SysId = Storage('200', 32)
+   'PIPE storage 200 32 | var Out'
+   Call AssertIdentical SysId, Out
+   Return
+
+TestStorageWrite:
+   Before = Storage('20000', 10)
+   'PIPE literal Hello CMS!|storage 20000 10 E0'
+   After = Storage('20000', 10)
+   Call AssertNotEqual Before, After
+   Call AssertIdentical 'Hello CMS!', After
+   Return
+
 TestStrliteral:
    'WITHSTEM OUTPUT O. COMMAND PIPE strliteral /  Hello  cruel  world!  / | console'
    Call AssertEqual 1, O.0

@@ -414,3 +414,11 @@ Fix:
 Wrote SVC handler (SVC109) in PLUFNC ASSEMBLE to convert ESPIE to SPIE.
 
 --------------------------------------------------------------------------------
+Date: 2025-03-12
+Num: 23
+Issue: STORAGE works.
+
+REXXUNIT PIPDEVDR:TestStorageReadExplicit PIPDEVDR:TestStorageReadImplied
+REXXUNIT PIPDEVDR:TestStorageWrite
+
+--------------------------------------------------------------------------------
