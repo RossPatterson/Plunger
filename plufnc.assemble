@@ -63,6 +63,10 @@ PLUFNCUN $ENTER ,
          MVC   PGMNPSW,PRMPGMNP  Restore CMS's PGM-new PSW.
 UNLDNPSW DS    0H
          SPACE 3
+         LA    R1,UNLDEDRP    "EXECDROP * *"
+         SVC   202
+         DC    AL4(1)
+         SPACE 3
          LA    R3,FUNCTBL     Get address and
          LA    R4,FUNCCNT        count of func list.
          USING FUNCENT,R3
@@ -81,6 +85,12 @@ UNLDEXIT $EXIT ,
          SPACE 3
 UNLDERDR BAL   R14,MSG020     "Error <rc> from NUCEXT CLR <name>"
          B     UNLDEXIT       Exit.
+UNLDEDRP DS    0D
+         DC    CL8'EXECDROP'
+         DC    CL8'*'
+         DC    CL8'*'
+         DC    8X'FF'
+         POP   USING
          TITLE 'Messages.'
 MSG002   DS    0H             No WRKSECT on this one, so no MF=E.
          LINEDIT TEXT='PLUFNC002E Cannot obtain workarea',DISP=ERRMSG
@@ -124,6 +134,33 @@ MSG022   DS    0H
                MF=(E,WRKLEDPL)
          LA    R15,22
          BR    R14
+         SPACE 3
+MSG023   DS    0H
+         LINEDIT TEXT='PLUFNC023E Invalid command: ....................*
+               ...............',                                       *
+               SUB=(CHAR8A,(R3)),                                      *
+               DISP=ERRMSG,                                            *
+               MF=(E,WRKLEDPL)
+         LA    R15,23
+         BR    R14
+         SPACE 3
+MSG024   DS    0H
+         LR    R3,R1
+         LINEDIT TEXT='PLUFNC024E Error ........ from ........ on .....*
+               ................',                                      *
+               SUB=(DEC,(R2),CHARA,(R3),CHAR8A,8(,R3)),                *
+               DISP=ERRMSG,                                            *
+               MF=(E,WRKLEDPL)
+         LA    R15,24
+         BR    R14
+         SPACE 3
+MSG028   DS    0H
+         LINEDIT TEXT='PLUFNC025E File ................. not found',   *
+               SUB=(CHAR8A,8(,R3)),                                    *
+               DISP=ERRMSG,                                            *
+               MF=(E,WRKLEDPL)
+         LA    R15,25
+         BR    R14
          LTORG ,
          POP   USING
          TITLE 'CMS functions to take control of.'
@@ -134,6 +171,10 @@ FUNCLEN  EQU   *-FUNCTBL
          $FUNC EPOINT
          $FUNC ESTATE
          $FUNC ESTATEW
+         $FUNC EXECDROP
+         $FUNC EXECLOAD
+         $FUNC EXECMAP
+         $FUNC EXECSTAT
          $FUNC GLOBALV
          $FUNC LINERD
 *        $FUNC PGMHND         Only called via PGMNPSW.
@@ -268,6 +309,256 @@ STATERIT BAL   R14,MSG021     "Record number <n> is too large"
 STATERNR BAL   R14,MSG022     "Record count <n> is too large"
          B     STATEXIT       Exit.
          DROP  R3
+         POP   USING
+         TITLE 'EXECDROP - Remove an EXEC from storage.'
+         PUSH  USING
+         USING NUCON,0
+EXECDROP $ENTER ,
+*
+*        Pipelines uses this format:
+*              "EXECDROP fn ft"
+*        We uses this format in cleanup:
+*              "EXECDROP * *"
+*        So that's all we expect and support.
+*
+         SPACE 3
+         LR    R3,R1          Tokenized PLIST.
+         CLI   24(R3),X'FF'   "EXECDROP","fn","ft",fence?
+         BNE   EXDRERST       No, error.
+         SPACE 3
+         LA    R2,NUCEXIS-(EXISFWP-EXISBLK)  -> 0th EXISBLK
+         USING EXISBLK,R2
+EXDREXLP DS    0H
+         LR    R4,R2          Save pointer.
+         ICM   R2,B'1111',EXISFWP  Get next EXISBLK
+         BZ    EXDRERNF       None left, error.
+         SPACE 1
+         CLI   8(R3),C'*'    Is it "all"?
+         BE    *+10           Yes, don't check it.
+         CLC   EXISFN,8(R3)   Is this it?
+         BNE   EXDREXLP       No, try next.
+         SPACE 1
+         CLI   16(R3),C'*'   Is it "all"?
+         BE    *+10           Yes, don't check it.
+         CLC   EXISFT,16(R3)  Is this it?
+         BNE   EXDREXLP       No, try next.
+         SPACE 1
+         MVC   EXISFWP-EXISBLK(,R4),EXISFWP  Unchain this EXISBLK.
+         L     R0,EXISDWDS    Get FBLOCK, etc. size
+         L     R1,EXISFBLK       and address.
+         DMSFRET DWORDS=(0),LOC=(1)  Return FBLOCK etc.
+         LA    R0,EXISBLKD    Get EXISBLK size
+         LR    R1,R2             and address.
+         DMSFRET DWORDS=(0),LOC=(1)  Return EXISBLK.
+         DROP  R2
+EXDREXOK DS    0H
+         SR    R15,R15        All is well.
+EXDREXIT DS    0H
+         $EXIT ,
+         SPACE 3
+EXDRERNF DS    0H
+         CLC   =CL16'*       *',8(R3)  All wildcards?
+         BE    EXDREXOK       Yes, that's not an error.
+         BAL   R14,MSG028     "File <fn> <ft> not found"
+         B     EXDREXIT
+         SPACE 3
+EXDRERST BAL   R14,MSG023     "Invalid command: <...>"
+         B     EXLDEXIT
+         TITLE 'EXECLOAD - Load an EXEC into storage.'
+         PUSH  USING
+         USING NUCON,0
+EXECLOAD $ENTER ,
+*
+*        Pipelines uses this format:
+*              "EXECLOAD fn ft"
+*        So that's all we expect and support.
+*
+         SPACE 3
+         LR    R3,R1          Tokenized PLIST.
+         CLI   24(R3),X'FF'   "EXECLOAD","fn","ft",fence?
+         BNE   EXLDERST       No, error.
+         SPACE 3
+         XC    WRKPLSTS,WRKPLSTS
+         MVC   WRKDSKPL+8(16),8(R3)  Set fn ft.
+         MVC   WRKDSKPL+24(2),=CL2'*'  Set fm.
+*
+*        FSSTATE screws up with ERROR=1, so handcoded instead :-(
+*
+*        FSSTATE FSCB=WRKDSKPL,ERROR=1
+         MVC   WRKDSKPL(8),=CL8'STATE'
+         MVC   WRKDSKPL+40(4),WRKDSKPL+28
+         LA    R1,WRKDSKPL
+         SVC   202
+         DC    AL4(1)
+         LTR   R15,R15        All OK?
+         BNZ   EXLDERNF       No, error.
+         L     R4,WRKDSKPL+28  Yes, get FST address.
+*
+* End of hand-coded FSSTATE
+*
+         USING FSTD,R4
+         SPACE 3
+         LA    R0,EXISBLKD    Get storage
+         DMSFREE DWORDS=(0),TYPE=NUCLEUS  for EXISBLK.
+         LR    R5,R1
+         USING EXISBLK,R5
+         XC    EXISBLK(EXISBLKB),EXISBLK  Clear it.
+         MVC   EXISFN,FSTFNAME  Set fn
+         MVC   EXISFT,FSTFTYPE    and ft.
+         OI    EXISFLG,EXISREXX  Say it's a Rexx EXEC.
+         SPACE 3
+         LH    R2,FSTBLKCT    Get block count
+         MH    R2,=H'100'        * (800/8)
+         AH    R2,FSTRECCT          + record count
+         LA    R2,FBLLEND(,R2)         + FBLOCK size.
+         ST    R2,EXISDWDS    Set storage used.
+         LR    R0,R2          Get storage for FBLOCK+
+         DMSFREE DWORDS=(0)      descriptors+records.
+         LR    R6,R1          FBLOCK is first.
+         ST    R6,EXISFBLK   Chain FBLOCK onto EXISBLK.
+         USING FBLOCK,R6
+         XC    FBLOCK(FBLLENL),FBLOCK  Clear it.
+         MVC   FBLNAME,EXISFN   Set
+         MVC   FBLTYPE,EXISFT     file
+         MVC   FBLMODE,FSTFMODE      id.
+         MVC   FBLEXTL,=H'2'  Set extension size: descriptors only.
+         LA    R7,FBLLENL(,R6)  -> descriptor list.
+         ST    R7,FBLDLS      Chain descriptors onto FBLOCK.
+         LH    R0,FSTRECCT    Get record count
+         SLL   R0,3              * 8.
+         ST    R0,FBLDLE      Set descriptor list size.
+         DROP  R6
+         SPACE 3
+         LH    R6,FSTRECCT    ->
+         SLL   R6,3              file
+         AR    R6,R7                records.
+         SPACE 3
+         LH    R2,FSTRECCT    Get record count.
+         L     R8,FSTLRECL    Get max record length.
+         DROP  R4
+EXLDRDLP DS    0H
+         FSREAD FSCB=WRKDSKPL,BUFFER=(R6),BSIZE=(R8),RECNO=0,NOREC=1,  *
+               ERROR=1
+         LTR   R15,R15        All OK?
+         BNZ   EXLDERIO       No, error.
+         ST    R6,0(,R7)      Set record address
+         ST    R0,4(,R7)         and length.
+         LA    R7,8(,R7)      -> next descriptor.
+         AR    R6,R0          -> next record location.
+         BCT   R2,EXLDRDLP    Next!
+         SPACE 3
+         FSCLOSE FSCB=WRKDSKPL,ERROR=1
+         LTR   R15,R15        All OK?
+         BNZ   EXLDERIO       No, error.
+         MVC   EXISFWP,NUCEXIS  Chain this one
+         ST    R5,NUCEXIS          at the front.
+         SR    R15,R15        All's well.
+EXLDEXIT $EXIT ,
+         SPACE 3
+EXLDERST BAL   R14,MSG023     "Invalid command: <...>"
+         B     EXLDEXIT
+         SPACE 3
+EXLDERIO BAL   R14,MSG024    "Error <rc> from <func> on <fn> <ft> <fm>"
+         L     R0,EXISDWDS    Get EXISBLK, FBLOCK, etc. size
+         LR    R1,R5             and address.
+         DMSFRET DWORDS=(0),LOC=(1)  Return FBLOCK etc.
+         B     EXLDEXIT
+         SPACE 3
+EXLDERNF BAL   R14,MSG028     "File <fn> <ft> not found"
+         B     EXLDEXIT
+         DROP  R5
+         POP   USING
+         TITLE 'EXECMAP - List EXECs in storage.'
+         PUSH  USING
+         USING NUCON,0
+EXECMAP  $ENTER ,
+         SPACE 3
+         SR    R3,R3          We haven't written the header yet.
+         LA    R2,NUCEXIS-(EXISFWP-EXISBLK)  -> 0th EXISBLK
+         USING EXISBLK,R2
+EXMPEXLP DS    0H
+         ICM   R2,B'1111',EXISFWP  Get next EXISBLK
+         BZ    EXMPEXIT       None left, done.
+         LTR   R3,R3          Done header yet?
+         BNZ   EXMPHDOK       Yes, skip.
+         LINEDIT TEXT='Name     Type     Usage    Records  Bytes',     *
+               COMP=NO,DOT=NO
+         LA    R3,1           We've written the header.
+EXMPHDOK DS    0H
+         L     R5,EXISFBLK    -> FBLOCK
+         USING FBLOCK,R5
+         L     R6,FBLDLE      Records is
+         SRL   R6,3              descriptors-length / 8.
+         L     R7,EXISDWDS    Bytes is
+         SLL   R7,3              DWord * 8.
+         LH    R8,EXISXCNT    'cause LINEDIT don't do halfwords.
+         LINEDIT TEXT='................. ........ ........ ........',  *
+               SUB=(CHAR8A,EXISFN,DEC,(R8),DEC,(R6),DEC,(R7)),         *
+               COMP=NO,DOT=NO,                                         *
+               MF=(E,WRKLEDPL)
+         B     EXMPEXLP       Next!
+         DROP  R2,R5
+EXMPEXIT $EXIT ,
+         POP   USING
+         TITLE 'EXECSTAT - Check for EXEC-in-storage.'
+         PUSH  USING
+         USING NUCON,0
+EXECSTAT $ENTER ,
+*
+*        Pipelines uses this format:
+*              "EXECSTAT fn ft"
+*        So that's all we expect and support.
+*
+         SPACE 3
+         LR    R3,R1          Tokenized PLIST.
+         CLI   24(R3),X'FF'   "EXECSTAT","fn","ft",fence?
+         BNE   EXSTERST       No, error.
+         SPACE 3
+         LA    R2,NUCEXIS-(EXISFWP-EXISBLK)  -> 0th EXISBLK
+         USING EXISBLK,R2
+EXSTEXLP DS    0H
+         ICM   R2,B'1111',EXISFWP  Get next EXISBLK
+         BZ    EXSTDISK       None left, try disk.
+         CLC   EXISFN,8(R3)   Is this it?
+         BNE   EXSTEXLP       No, try next.
+         CLC   EXISFT,16(R3)  Is this it?
+         BNE   EXSTEXLP       No, try next.
+*
+*        It isn't documented, but EXECSTAT in CMS/SP5 seems to return
+*        the EXISBLK in R0, and Pipelines seems to need that.
+*
+         $RETREG REG=R0,VALUE=(R2)  Pass EXISBLK back in R0.
+         L     R1,EXISFBLK    Get FBLOCK address.
+         $RETREG REG=R1,VALUE=(R1)  Pass it back in R1.
+         SR    R15,R15        File found, in memory.
+         B     EXSTEXIT
+         DROP  R2
+         SPACE 3
+EXSTDISK DS    0H
+         XC    WRKDSKPL,WRKDSKPL
+         MVC   WRKDSKPL+8(16),8(R3)
+         MVC   WRKDSKPL+24(2),=CL2'*'
+*
+*        FSSTATE screws up with ERROR=1, so handcoded instead :-(
+*
+*        FSSTATE FSCB=WRKDSKPL,ERROR=1
+         MVC   WRKDSKPL(8),=CL8'STATE'
+         MVC   WRKDSKPL+40(4),WRKDSKPL+28
+         LA    R1,WRKDSKPL
+         SVC   202
+         DC    AL4(1)
+         LTR   R15,R15        All OK?
+         BNZ   EXSTNFND       No, error.
+         L     R1,WRKDSKPL+28  Yes, get FST address.
+         $RETREG REG=R1,VALUE=(R1)  Pass FST back in R1.
+         LA    R15,4          File found, not in memory.
+EXSTEXIT $EXIT ,
+         SPACE 3
+EXSTNFND LA    R15,8          File not found.
+         B     EXSTEXIT
+         SPACE 3
+EXSTERST BAL   R14,MSG023     "Invalid command: <...>"
+         B     EXSTEXIT
          POP   USING
          TITLE 'GLOBALV - Get/set global variables'
          PUSH  USING
@@ -742,18 +1033,58 @@ FUNCENT  DSECT ,
 FUNCNAME DS    CL8            Function name.
 FUNCEP   DS    A              Offset to entrypoint.
          EJECT ,
+EXISBLK  DSECT ,
+EXISFWP  DS    A              Next EXISBLK in chain.
+EXISDWDS DS    F              DWords of storage.
+EXISFN   DS    CL8            Filename
+EXISFT   DS    CL8            Filetype
+EXISXCNT DS    H              Execution count
+EXISFLG  DS    X              Flags:
+EXISSYS  EQU   X'80'          - SYSTEM option.
+EXISDPDG EQU   X'40'          - EXECDROP pending.
+EXISREXX EQU   X'20'          - 0: EXEC2, 1: Rexx,
+EXISSHRD EQU   X'10'          - In INSTSEG.
+EXISRLVL DS    FL1            Execution level
+EXISFBLK DS    A              FBLOCK address.
+EXISBLKB EQU   *-EXISBLK      Length in bytes
+EXISBLKD EQU   (EXISBLKB+7)/8  Length in DWords.
+         EJECT ,
+FBLOCK   DSECT ,
+FBLNAME  DS    CL8            Filename
+FBLTYPE  DS    CL8            Filetype
+FBLMODE  DS    CL2            Filemode
+FBLLFI   EQU   *-FBLNAME      Length of fileid
+FBLEXTL  DS    FL2'0'         Extension block length (words)
+FBLDLS   DS    AL4            Descriptor list start
+FBLDLE   DS    FL4            Descriptor list length (bytes)
+FBLPREF  DS    CL8            Explicit initial prefix
+FBLENAME DS    CL8            Explicit environment name
+FBLSEXIT DS    AL4            System Exit vector address
+FBLEUSER DS    FL4            System Exit User Word
+FBLLENL  EQU   *-FBLNAME      Length of fblock (bytes)
+FBLLEND  EQU   (FBLLENL+7)/8  Length of fblock (dwords)
+         EJECT ,
          DMSABW ,
          ORG   ABWSECT+X'F4'
 ABNUWRD  DS    F             ABNEXIT user word.
          ORG   ,
          EJECT ,
+         EPLIST ,
+         FSTD  ,
          NUCON ,
+         ORG   NUCRSV4        aka NUCON+X'090'
+NUCBREXX DS    A              bREXX address in memory
          ORG   NUCON+X'E70'
 ADMSABXR DS    A              ABNEXIT RESET entrypoint.
+         ORG   NUCON+X'E84'
+NUCEXIS  DS    A              EXecInStorage block chain.
+         ORG   NUCON+X'FF8'
+NUCPLUEX DS    A              -> PLUFNC EXEC handler when ENABLEd.
          ORG   NUCON+X'FFC'
 NUCPLUPT DS    A              -> PLUNGER PRMSECT.
          ORG   ,
          EJECT ,
+         IO    ,
          REGEQU ,
          SCBLOCK ,
          SVCSAVE ,

@@ -422,3 +422,22 @@ REXXUNIT PIPDEVDR:TestStorageReadExplicit PIPDEVDR:TestStorageReadImplied
 REXXUNIT PIPDEVDR:TestStorageWrite
 
 --------------------------------------------------------------------------------
+Date: 2025-03-22
+Num: 24
+Issue: FPLREX040E REXX program TRD not found.
+
+Test:
+/* TRD REXX */
+'OUTPUT Hi from Rexx!'
+Exit
+PLUNGER ENABLE
+PIPE REXX TRD | CONSOLE
+
+The Pipelines REXX stage won't run Rexx stages because it wants to have them
+EXECLOADed ("EXECs in storage"), and VM/370 CMS doesn't have that.
+
+Fix:
+Implemented rudimentary EXECDROP, EXECLOAD, EXECMAP, and EXECSTAT in PLUFNC
+ASSEMBLE.
+
+--------------------------------------------------------------------------------

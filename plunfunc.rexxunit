@@ -158,6 +158,88 @@ TestEStateW:
    Call Erase 'TESW DATA A'
    Return
 
+TestExecDrop:
+   Call Erase 'TEXD * A'
+   E.1 = "/* TEXD EXEC */"
+   E.2 = "Say 'Hi from TEXD!'"
+   E.3 = "Exit 25"
+   E.0 = 3
+   'EXECIO' E.0 'DISKW TEXD EXEC A (FINIS STEM E.'
+   'EXECLOAD TEXD EXEC'
+   Call NoError 'EXECSTAT TEXD EXEC'
+   Call AssertEqual 0, RC
+   Call Erase 'TEXD * A'
+   'EXECDROP TEXD EXEC'
+   Call NoError 'EXECSTAT TEXD EXEC'
+   Call AssertEqual 8, RC
+   Return
+
+TestExecLoad:
+   Call Erase 'TEXL * A'
+   E.1 = "/* TEXL EXEC */"
+   E.2 = "Say 'Hi from TEXL!'"
+   E.3 = "Exit 25"
+   E.0 = 3
+   'EXECIO' E.0 'DISKW TEXL EXEC A (FINIS STEM E.'
+   'EXECLOAD TEXL EXEC'
+   Call NoError 'EXECSTAT TEXL EXEC'
+   $RC = RC
+   'EXECDROP TEXL EXEC'
+   Call Erase 'TEXL * A'
+   Call AssertEqual 0, $RC
+   Return
+
+TestExecMap:
+   Call Erase 'TEXM * A'
+   E.1 = "/* TEXM EXEC */"
+   E.2 = "Say 'Hi from TEXM!'"
+   E.3 = "Exit 25"
+   E.0 = 3
+   ExpectedSize = (1*800) + (3*8) + (7*8)
+   Call NoError 'EXECDROP * *'
+   'EXECIO' E.0 'DISKW TEXM EXEC A (FINIS STEM E.'
+   'EXECLOAD TEXM EXEC'
+   R.1 = 'Name     Type     Usage    Records  Bytes'
+   R.2 = 'TEXM     EXEC            0        3' Right(ExpectedSize, 8)
+   R.0 = 2
+   'WITHSTEM OUTPUT O. COMMAND EXECMAP'
+   'EXECDROP * *'
+   Call Erase 'TEXM * A'
+   Call AssertStemIdentical 'R.', 'O.'
+   Return
+
+TestExecStatNoFile:
+   Call NoError 'EXECSTAT TEXSN EXEC'
+   Call AssertEqual 8, RC
+   Return
+
+TestExecStatDisk:
+   Call Erase 'TEXSD * A'
+   E.1 = "/* TEXSD EXEC */"
+   E.2 = "Say 'Hi from TEXSD!'"
+   E.3 = "Exit 25"
+   E.0 = 3
+   'EXECIO' E.0 'DISKW TEXSD EXEC A (FINIS STEM E.'
+   Call NoError 'EXECSTAT TEXSD EXEC'
+   $RC = RC
+   Call Erase 'TEXSD * A'
+   Call AssertEqual 4, $RC
+   Return
+
+TestExecStatStorage:
+   Call Erase 'TEXSS * A'
+   E.1 = "/* TEXSS EXEC */"
+   E.2 = "Say 'Hi from TEXSS!'"
+   E.3 = "Exit 25"
+   E.0 = 3
+   'EXECIO' E.0 'DISKW TEXSS EXEC A (FINIS STEM E.'
+   'EXECLOAD TEXSS EXEC'
+   Call NoError 'EXECSTAT TEXSS EXEC'
+   $RC = RC
+   Call Erase 'TEXSS * A'
+   Call AssertEqual 0, $RC
+   Return
+
 TestGlobalVNoSelect:
    'GLOBALV BANANA'
    Call AssertEqual 0, Queued()
