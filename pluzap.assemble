@@ -219,6 +219,20 @@ ZAP006   DS    0X
          $ZAP  REP,DA80,D5D6E4D7C4C9D9E3  DC   CL8'NOUPDIRT'
          $ZAP  RESET
          EJECT ,
+ZAP007   DS    0X
+*
+*        PIPMOD calls EXEC via BALR to run Rexx stages.  Make it call
+*        bREXX directly, because DMSEXC doesn't know about in-storage
+*        EXECs.
+*
+         $ZAP  VER,99B8A,58F00690         L    R15,AEXEC
+         $ZAP  REP,99B8A,58F00FF8         L    R15,NUCPLUEX
+         $ZAP  VER,99F1E,58F00690         L    R15,AEXEC
+         $ZAP  REP,99F1E,58F00FF8         L    R15,NUCPLUEX
+         $ZAP  VER,99F48,58F00690         L    R15,AEXEC
+         $ZAP  REP,99F48,58F00FF8         L    R15,NUCPLUEX
+         $ZAP  RESET
+         EJECT ,
          $ZAP  END
          LTORG ,
          TITLE 'ZAP details.'

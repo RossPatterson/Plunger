@@ -441,3 +441,33 @@ Implemented rudimentary EXECDROP, EXECLOAD, EXECMAP, and EXECSTAT in PLUFNC
 ASSEMBLE.
 
 --------------------------------------------------------------------------------
+Date: 2025-05-26
+Num: 25
+Issue: DMSEXT072E Error in EXEC file TRD, line 0 - File not found.
+FPLINX1288I Branch to zero probably from 40D9F81A.
+
+CMS doesn't recognize in-storage EXECs, trying to read them from disk instead,
+with a forced filetype of EXEC (despite the EXISBLK->FBLOCK).
+
+Test:
+/* TRD REXX */
+'OUTPUT Hi from Rexx!'
+Exit
+PLUNGER ENABLE
+PIPE REXX TRD | CONSOLE
+
+Fix:
+Wrote a front-end to DMSEXC ("EXEC" in PLUFNC ASSEMBLE) that implements finding
+Rexx programs via EXISBLK and FBLOCK.  Stored its address in a reserved word
+in NUCON.
+
+Wrote ZAP007 in PLUZAP ASSEMBLE to change Pipelines to change its BALR
+invocation of DMSEXC (via AEXEC in NUCON) to call our front-end instead.
+
+NOTE: This code uses a reserved word at NUCON+x'FF8' to hold a pointer to a
+      our front-end.  Nothing else in the virtual machine can use it between
+      PLUNGER ENABLE and PLUNGER DISABLE.
+
+TODO: Can we move this into the PRMSECT?
+
+--------------------------------------------------------------------------------

@@ -158,6 +158,55 @@ TestEStateW:
    Call Erase 'TESW DATA A'
    Return
 
+TestExecBalrDisk:
+   Call Erase 'TEXBD * A'
+   I=0
+   I=I+1; A.I = "TEXBD    START X'20000'"
+   I=I+1; A.I = "         BALR  11,0"
+   I=I+1; A.I = "         USING *,11"
+   I=I+1; A.I = "         STM   0,15,SAVE"
+   I=I+1; A.I = "         CNOP  0,4"
+   I=I+1; A.I = "         BAL   1,DOIT"
+   I=I+1; A.I = "         DC    CL8'EXEC'"
+   I=I+1; A.I = "         DC    CL8'TEXBD'"
+   I=I+1; A.I = "         DC    CL8'Hi'"
+   I=I+1; A.I = "         DC    CL8'Mom!'"
+   I=I+1; A.I = "         DC    8X'FF'"
+   I=I+1; A.I = "DOIT     DS    0H"
+   I=I+1; A.I = "         MVC   PSW(2),=X'FFE0'"
+   I=I+1; A.I = "         L     12,NUCPLUEX(,0)"
+   I=I+1; A.I = "         ST    12,PSW+4"
+   I=I+1; A.I = "         LR    15,12"
+   I=I+1; A.I = "         LA    14,EXECRET"
+   I=I+1; A.I = "         LPSW  PSW"
+   I=I+1; A.I = "EXECRET  BALR  11,0"
+   I=I+1; A.I = "         USING *,11"
+   I=I+1; A.I = "         LA    3,901"
+   I=I+1; A.I = "         C     15,=F'92'"
+   I=I+1; A.I = "         BNE   RETURN"
+   I=I+1; A.I = "         SR    3,3"
+   I=I+1; A.I = "RETURN   LR    15,3"
+   I=I+1; A.I = "         LM    0,14,SAVE"
+   I=I+1; A.I = "         BR    14"
+   I=I+1; A.I = "PSW      DC    D'0'"
+   I=I+1; A.I = "SAVE     DS    16F"
+   I=I+1; A.I = "NUCPLUEX EQU   X'FF8'"
+   I=I+1; A.I = "         END"
+   A.0 = I
+   Call Assemble 'A.', 'TEXBD'
+   E.1 = "/* TEXBD EXEC */"
+   E.2 = "Say Arg(1) 'from TEXBD!'"
+   E.3 = "Exit 92"
+   E.0 = 3
+   'EXECIO' E.0 'DISKW TEXBD EXEC A (FINIS STEM E.'
+   'WITHSTEM OUTPUT OUT. COMMAND LOAD TEXBD ( START'
+   Ref.1 = 'DMSLIO740I Execution begins...'
+   Ref.2 = 'Hi Mom! from TEXBD!'
+   Ref.0 = 2
+   Call Erase 'TEXBD * A'
+   Call AssertStemIdentical 'Ref.', 'Out.'
+   Return
+
 TestExecDrop:
    Call Erase 'TEXD * A'
    E.1 = "/* TEXD EXEC */"
