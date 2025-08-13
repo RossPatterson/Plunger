@@ -471,3 +471,21 @@ NOTE: This code uses a reserved word at NUCON+x'FF8' to hold a pointer to a
 TODO: Can we move this into the PRMSECT?
 
 --------------------------------------------------------------------------------
+Date: 2025-08-13
+Num: 26
+Issue: Error 58 running "TRD": File not found
+
+bREXX can't run in-storage EXECs.
+
+Test:
+/* TRD REXX */
+'OUTPUT Hi from Rexx!'
+Exit
+PLUNGER ENABLE
+PIPE REXX TRD | CONSOLE
+
+Fix:
+Implemented full CMS/SP5-equivalent support for FBLOCKs in EPLISTs in bREXX.
+This requires at least version of 1.2.0 of bREXX.
+
+--------------------------------------------------------------------------------
