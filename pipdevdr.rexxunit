@@ -185,6 +185,33 @@ TestPdsdirect:
    Call AssertIdentical "DMMMAC", Left(Out.3, 6)
    Return
 
+TestRexxDisk:
+   Lines.1 = '/* */'
+   Lines.2 = '"OUTPUT Hi from Rexx!"'
+   Lines.3 = 'Exit'
+   Lines.0 = 3
+   'EXECIO' Lines.0 'DISKW TRD REXX A (FINIS STEM Lines.'
+   'PIPE rexx TRD | stem Out.'
+   'ERASE TRD REXX A'
+   Ref.1 = 'Hi from Rexx!'
+   Ref.0 = 1
+   Call AssertStemIdentical 'Ref.', 'Out.'
+   Return
+
+TestRexxStorage:
+   Lines.1 = '/* */'
+   Lines.2 = '"OUTPUT Hi from Rexx in storage!"'
+   Lines.3 = 'Exit'
+   Lines.0 = 3
+   'EXECIO' Lines.0 'DISKW TRD REXX A (FINIS STEM Lines.'
+   'EXECLOAD TRD REXX'
+   'ERASE TRD REXX A'
+   'PIPE rexx TRD | stem Out.'
+   Ref.1 = 'Hi from Rexx in storage!'
+   Ref.0 = 1
+   Call AssertStemIdentical 'Ref.', 'Out.'
+   Return
+
 TestStackInput:
    Msg.0 = 2
    Msg.1 = 'Now is the winter of our discontent'

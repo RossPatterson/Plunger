@@ -489,3 +489,11 @@ Implemented full CMS/SP5-equivalent support for FBLOCKs in EPLISTs in bREXX.
 This requires at least version of 1.2.0 of bREXX.
 
 --------------------------------------------------------------------------------
+Date: 2024-10-23
+Num: 27
+Issue: REXX works.
+
+Test:
+REXXUNIT PIPDEVDR:TestRexxDisk PIPDEVDR:TestRexxStorage
+
+--------------------------------------------------------------------------------
