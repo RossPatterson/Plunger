@@ -7,6 +7,10 @@ Distribution_, makes _CMS Pipelines_ work on the [_VM/370 Community
 Edition_](https://www.vm370.org/vm), a derivative of IBM's VM/370 Release 6
 system.
 
+The _CMS Pipelines Runtime Distribution_ is graciously provided free of charge
+by IBM under a specific set of terms, which you must adhere to if you use it.
+See [Licenses](#licenses) below for more information.
+
 ## Contents
 
 * [Overview](#overview)
@@ -209,11 +213,21 @@ limits.  Specifically, `EPOINT`, `ESTATE`, `ESTATEW`, `RDBUF`, and `WRBUF`
 use cases.
 * `LINERD` function - basic support to map `LINERD` macros into `RDTERM`
 equivalents.
+* `NUCXLOAD` command - a nearly-complete re-implementation of the VM/SP5 CMS
+`NUCXLOAD` command, including relocation support, but only for `PIPELINE
+MODULE`.
 * `WAITRD` function - map an undocumented use of the `RDTERM` macro to
 `EDIT=NO`.
-* Several instructions that Pipelines depends on but that are not part of
-System/370.  These are implemented as their necessity is discovered, and
-currently include `AHI` (A7xA), `BRC` (A7x4), `BSM` (0B), and `CHI` (A7xE).
+* Several CPU instructions that Pipelines depends on but that are not part of
+System/370.  These are implemented as their necessity is discovered.  The list
+currently includes:
+  * `AHI` (A7xA) - Add Halfword Immediate, fully implemented.
+  * `BRC` (A7x4) - Branch Relative Conditional, fully implemented.
+  * `BSM` (0B) - Branch and Set Mode, implemented to always set 24-bit mode.
+  * `CHI` (A7xE) - Compare Halfword Immediate, fully implemented.
+  * `LAE`(51) - Load Address Extended, implemented exactly as LA (41).
+  * `STAM` (9B) - Store Access Multiple, implemented to always store 0 ("home
+space").
 
 _Plunger_ also modifies several parts of the _CMS Pipelines_ code in memory,
 altering them while it loads `PIPELINE MODULE` as a nucleus extension.  In
@@ -231,7 +245,7 @@ https://github.com/s390guy/vm370/issues/97 for details.
 newer version than VM/370 CE's
 * `ZAP006` - PIPELINE calls RENAME (NOUPDIR, but VM/370 R6 expects (NOUPDIRT.
 * `ZAP007` - Bypass DMSEXC when calling Rexx stages (pre-dates CMS update
-HRC100DS).
+HRC100DS, and is not applied if HRC100DS is installed on CMS).
 
 ## `PLUNGER` command
 

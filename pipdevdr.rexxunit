@@ -219,6 +219,33 @@ TestRexxStorage:
    Call AssertStemIdentical 'Ref.', 'Out.'
    Return
 
+TestRexxStreamPrimary:
+   'PIPE' ,
+      'literal' ,
+         '/* */' ,
+         '"OUTPUT Hi from Rexx in the primary stream!";' ,
+         'Exit' ,
+      '|rexx *:' ,
+      '|stem Out.'
+   Ref.1 = 'Hi from Rexx in the primary stream!'
+   Ref.0 = 1
+   Call AssertStemIdentical 'Ref.', 'Out.'
+   Return
+
+TestRexxStreamSecondary:
+   'PIPE (end ?)' ,
+      'R: rexx *.1:' ,
+      '|stem Out.' ,
+      '?literal' ,
+         '/* */' ,
+         '"OUTPUT Hi from Rexx in the secondary stream!";' ,
+         'Exit' ,
+      '|R:'
+   Ref.1 = 'Hi from Rexx in the secondary stream!'
+   Ref.0 = 1
+   Call AssertStemIdentical 'Ref.', 'Out.'
+   Return
+
 TestStackInput:
    Msg.0 = 2
    Msg.1 = 'Now is the winter of our discontent'

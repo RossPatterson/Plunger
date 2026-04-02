@@ -1,3 +1,6 @@
+I0003 - Make REXX stage work with stream programs.
+        * Implemented some post-S/370 instructions (LAE, STAM) Rexx requires
+          to read stage-programs from streams.
 I0002 - Make CMS stage work.
         * Forced CMS stage to take CMS 5.5 codepath and avoid assertion
           failure 1C8.

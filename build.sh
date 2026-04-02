@@ -53,6 +53,7 @@ herccontrol "/MKPLUNGE" -w "^Ready;"
 # Make the package VMARC file.
 herccontrol "devinit 00d /opt/hercules/vm370/io/plunger.vmarc" -w "^HHCPN098I"
 sleep 5	# Because "devinit" is timing-related :-(
+# Later we'll be more explicit, for now just include everything.
 herccontrol "/VMARC PACK * * A (PUNCH NOTRACE" -w "^Ready;"
 herccontrol "devinit 00d dummy" -w "^HHCPN098I"
 sleep 5	# Because "devinit" is timing-related :-(

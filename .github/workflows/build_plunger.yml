@@ -204,7 +204,9 @@ jobs:
           path: ~/build_work/download
 
       - name: ZIP package
+        working-directory: ~/build_work/download
         run:
+          ls -lR
           zip -r Plunger.zip Plunger
 
       - name: Create release

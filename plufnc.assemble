@@ -899,28 +899,13 @@ PGMHRTRN DS    0H
 PGM0001  DS    0H
          CLI   0(R1),X'0B'    BSM?
          BE    P0010B         Yes, handle it.
+         CLI   0(R1),X'51'    LAE?
+         BE    P00151         Yes, handle it.
+         CLI   0(R1),X'9B'    STAM?
+         BE    P0019B         Yes, handle it.
          CLI   0(R1),X'A7'    One of the A7rX opcodes?
          BE    P001A7         Yes, maybe handle it.
          B     PGMHPASS       None of the above, let it crash
-         SPACE 3
-P0010B   DS    0H             0B: Branch and Set Mode
-         SPACE 3
-         IC    R2,1(,R1)      Get
-         N     R2,=A(X'F0')      R1
-         SRL   R2,2                 offset.
-         BZ    P0010BG        Skip if register 0.
-         LA    R2,LOWSAVE(R2)  Get register location.
-         NI    0(R2),B'0111111'  We're always in 24-bit mode.
-P0010BG  DS    0H
-         IC    R3,1(,R1)      Get
-         N     R3,=A(X'0F')      R2
-         SRL   R3,2                 offset.
-         BZ    P0010BH        Skip if register 0.
-         LA    R3,LOWSAVE(R3)  Get register location.
-         MVC   PGMOPSW+3(3),0(R3)  Set new address.
-P0010BH  DS    0H
-         B     PGMHRTRN       Return with unchanged CC.
-         SPACE 3
          SPACE 3
 P001A7   DS    0H
          IC    R0,1(,R1)      Get opcode
@@ -932,8 +917,81 @@ P001A7   DS    0H
          CH    R0,=Y(X'E')    CHI?
          BE    P001A7E        Yes, do it.
          B     PGMHPASS       None of the above, let it crash.
+         TITLE 'P0010B - 0Brr: Branch and Set Mode'
+P0010B   DS    0H
          SPACE 3
-P001A74  DS    0H             A7x4: Branch Relative Conditional
+         IC    R2,1(,R1)      Get
+         N     R2,=A(X'F0')      R1
+         SRL   R2,2                 offset.
+         BZ    P0010BG        Skip if register 0.
+         LA    R2,LOWSAVE(R2)  Get register location.
+         NI    0(R2),B'0111111'  We're always in 24-bit mode.
+P0010BG  DS    0H
+         IC    R3,1(,R1)      Get
+         N     R3,=A(X'0F')      R2
+         SLL   R3,2                 offset.
+         BZ    P0010BH        Skip if register 0.
+         LA    R3,LOWSAVE(R3)  Get register location.
+         MVC   PGMOPSW+3(3),0(R3)  Set new address.
+P0010BH  DS    0H
+         B     PGMHRTRN       Return with unchanged CC.
+         TITLE 'P00151 - 51rxbddd: Load Address Extended'
+P00151   DS    0H
+         SPACE 3
+         ICM   R2,B'0011',2(R1)  Get
+         N     R2,=A(X'0FFF')    D2 value.
+         SPACE 3
+         IC    R3,2(,R1)      Get
+         N     R3,=A(X'F0')      B2
+         SRL   R3,2                 offset.
+         BZ    P00151G        Skip if register 0.
+         A     R2,LOWSAVE(R3)  Add B2 value.
+P00151G  DS    0H
+         SPACE 3
+         IC    R3,1(,R1)      Get
+         N     R3,=A(X'0F')      X2
+         SLL   R3,2                 offset.
+         BZ    P00151H        Skip if register 0.
+         A     R2,LOWSAVE(R3)  Add X2 value.
+P00151H  DS    0H
+         SPACE 3
+         IC    R3,1(,R1)      Get
+         N     R3,=A(X'F0')      R1
+         SRL   R3,2                 offset.
+         ST    R2,LOWSAVE(R3)  Set new register value.
+         B     PGMHRTRN       Return with unchanged CC.
+         TITLE 'P0019B - 9Brrbddd: Store Access Multiple'
+P0019B   DS    0H
+*
+*        Since we have no access registers, store them all as 0.
+*
+         SPACE 3
+         ICM   R2,B'0011',2(R1)  Get
+         N     R2,=A(X'0FFF')    D2 value.
+         SPACE 3
+         IC    R3,2(,R1)      Get
+         N     R3,=A(X'F0')      B2
+         SRL   R3,2                 offset.
+         BZ    P0019BG        Skip if register 0.
+         A     R2,LOWSAVE(R3)  Add B2 value.
+P0019BG  DS    0H
+         SPACE 3
+         IC    R3,1(,R1)      Get
+         N     R3,=A(X'F0')      R1
+         SRL   R3,2                 offset.
+         SPACE 3
+         IC    R4,1(,R1)      Get
+         N     R4,=A(X'0F')      R3
+         SLL   R4,2                 offset.
+         SPACE 3
+         SR    R4,R3          Get length in
+         LA    R4,3(,R4)         bytes -1 for EX.
+         XC    0(*-*,R2),0(R2)  Zero out those fullwords.
+         EX    R4,*-6
+         B     PGMHRTRN       Return with unchanged CC.
+         SPACE 3
+         TITLE 'P001A74 - A7r4iiii: Branch Relative Conditional'
+P001A74  DS    0H
          SPACE 3
          TM    1(R1),X'F0'    Maybe NOP or B?
          BZ    PGMHRTRN       0000: NOP.
@@ -978,8 +1036,8 @@ P001A74K DS    0H             Take the branch.
          AR    R4,R3          Update address
          STCM  R4,B'0111',PGMOPSW+5  Update PSW.
          B     PGMHRTRN       Return with unchanged CC.
-         SPACE 3
-P001A7A  DS    0H             A7xA: Add Halfword Immediate
+         TITLE 'P001A7A - A7rAiiii: Add Halfword Immediate'
+P001A7A  DS    0H
          SPACE 3
          IC    R2,1(,R1)      Get
          N     R2,=A(X'F0')      R1
@@ -988,8 +1046,8 @@ P001A7A  DS    0H             A7xA: Add Halfword Immediate
          AH    R3,2(,R1)      Add immediate value.
          ST    R3,LOWSAVE(R2)  Update it.
          B     PGMHRTCC       Return with updated CC.
-         SPACE 3
-P001A7E  DS    0H             A7xE: Compare Halfword Immediate
+         TITLE 'P001A7E - A7rEiiii: Compare Halfword Immediate'
+P001A7E  DS    0H
          IC    R2,1(,R1)      Get
          N     R2,=A(X'F0')      R1
          SRL   R2,2                 offset.
