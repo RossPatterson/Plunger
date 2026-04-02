@@ -8,8 +8,21 @@ PLUZAP   CSECT ,
 PLUZAPMD $ENTER ,
          L     R10,NUCPLUPT
          USING PRMSECT,R10
-         LA    R4,ZAPTBL      -> ZAP table
          NI    WRKFLAG1,255-(WRKF1NGO+WRKF1ERX) Turn off "NO GO" flags.
+         LA    R4,ZAPTBL1     -> Main ZAP table.
+         BAL   R9,APPLY       Apply the main set of ZAPs.
+         TM    PRMFLAG1,PRMF1EXS  Does CMS have EXIS support?
+         BO    EXIT           Yes, skip the EXIS ZAPs.
+         LA    R4,ZAPTBL2     -> EXIS ZAP table.
+         BAL   R9,APPLY       Apply the EXEC-in-storage set of ZAPs.
+EXIT     DS    0H
+         SR    R15,R15        Assume all is well.
+         TM    WRKFLAG1,WRKF1ERX  Did at least one VER fail?
+         BZ    *+8            No, guessed right.
+         LA    R15,20         Yes, need to fail.
+         $EXIT ,
+         TITLE 'APPLY - Apply a set of ZAPs.'
+APPLY    DS    0H
 MAINLOOP DS    0H
          USING ZAPENT,R4
          ICM   R5,B'1111',ZAPOFF Get offset to location.
@@ -74,13 +87,8 @@ CARDEND  DS    0H
          SVC   202               WAITT doesn't
          DC    AL4(1)               have ERROR=.
          SPACE 3
+         BR    R9
          DROP  R4
-EXIT     DS    0H
-         SR    R15,R15        Assume all is well.
-         TM    WRKFLAG1,WRKF1ERX  Did at least one VER fail?
-         BZ    *+8            No, guessed right.
-         LA    R15,20         Yes, need to fail.
-         $EXIT ,
          TITLE 'Messages.'
 MSG002   DS    0H             No WRKSECT on this one, so no MF=E.
          LINEDIT TEXT='PLUZAP002E Cannot obtain workarea',DISP=ERRMSG
@@ -114,8 +122,8 @@ MSG018   DS    0H
          LA    R15,18
          BR    R14
          POP   USING
-         TITLE 'ZAPs to apply to PIPMOD.'
-ZAPTBL   DS    0D
+         TITLE 'Main ZAPs to always apply to PIPMOD.'
+ZAPTBL1  DS    0D
          EJECT ,
 ZAP001   DS    0X
 *
@@ -219,6 +227,9 @@ ZAP006   DS    0X
          $ZAP  REP,DA80,D5D6E4D7C4C9D9E3  DC   CL8'NOUPDIRT'
          $ZAP  RESET
          EJECT ,
+         $ZAP  END
+         TITLE 'EXIS ZAPs to skip if HRC100DS installed.'
+ZAPTBL2  DS    0D
 ZAP007   DS    0X
 *
 *        PIPMOD calls EXEC via BALR to run Rexx stages.  Make it call

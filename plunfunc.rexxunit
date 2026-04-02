@@ -1,6 +1,10 @@
 /* Unit tests for PLUNGER functions (NUCEXTs, etc.). */
 
 TestSetup:
+   /* Is HRC100DS installed? */
+   Call NoError 'EXECSTAT * *'
+   HasHRC100DS = (RC <> -3)
+
    /* Ensure WITHSTEM is available. */
    Call NoError 'NUCEXT WITHSTEM'
    If RC <> 0 then 'NUCXTEXT WITHSTEM (SYSTEM'
@@ -173,8 +177,13 @@ TestExecBalrDisk:
    I=I+1; A.I = "         DC    CL8'Mom!'"
    I=I+1; A.I = "         DC    8X'FF'"
    I=I+1; A.I = "DOIT     DS    0H"
-   I=I+1; A.I = "         MVC   PSW(2),=X'FFE0'"
-   I=I+1; A.I = "         L     12,NUCPLUEX(,0)"
+   If HasHRC100DS then Do
+      I=I+1; A.I = "         L     12,AEXEC(,0)"
+   End
+   Else Do
+      I=I+1; A.I = "         MVC   PSW(2),=X'FFE0'"
+      I=I+1; A.I = "         L     12,NUCPLUEX(,0)"
+   End
    I=I+1; A.I = "         ST    12,PSW+4"
    I=I+1; A.I = "         LR    15,12"
    I=I+1; A.I = "         LA    14,EXECRET"
@@ -190,7 +199,12 @@ TestExecBalrDisk:
    I=I+1; A.I = "         BR    14"
    I=I+1; A.I = "PSW      DC    D'0'"
    I=I+1; A.I = "SAVE     DS    16F"
-   I=I+1; A.I = "NUCPLUEX EQU   X'FF8'"
+   If HasHRC100DS then Do
+      I=I+1; A.I = "AEXEC    EQU   X'690'"
+   End
+   Else Do
+      I=I+1; A.I = "NUCPLUEX EQU   X'FF8'"
+   End
    I=I+1; A.I = "         END"
    A.0 = I
    Call Assemble 'A.', 'TEXBD'
@@ -231,8 +245,13 @@ TestExecBalrStorage:
    I=I+1; A.I = "         XC    EPFBLK,EPFBLK"
    I=I+1; A.I = "         ICM   1,B'1000',=X'01'"
    I=I+1; A.I = "         LA    0,EPCMD"
-   I=I+1; A.I = "         MVC   PSW(2),=X'FFE0'"
-   I=I+1; A.I = "         L     12,NUCPLUEX(,0)"
+   If HasHRC100DS then Do
+      I=I+1; A.I = "         L     12,AEXEC(,0)"
+   End
+   Else Do
+      I=I+1; A.I = "         MVC   PSW(2),=X'FFE0'"
+      I=I+1; A.I = "         L     12,NUCPLUEX(,0)"
+   End
    I=I+1; A.I = "         ST    12,PSW+4"
    I=I+1; A.I = "         LR    15,12"
    I=I+1; A.I = "         LA    14,EXECRET"
@@ -253,7 +272,12 @@ TestExecBalrStorage:
    I=I+1; A.I = "EPARGS   DS    A"
    I=I+1; A.I = "EPARGE   DS    A"
    I=I+1; A.I = "EPFBLK   DS    A"
-   I=I+1; A.I = "NUCPLUEX EQU   X'FF8'"
+   If HasHRC100DS then Do
+      I=I+1; A.I = "AEXEC    EQU   X'690'"
+   End
+   Else Do
+      I=I+1; A.I = "NUCPLUEX EQU   X'FF8'"
+   End
    I=I+1; A.I = "         END"
    A.0 = I
    Call Assemble 'A.', 'TEXBS'
@@ -315,7 +339,9 @@ TestExecMap:
    'EXECIO' E.0 'DISKW TEXM EXEC A (FINIS STEM E.'
    'EXECLOAD TEXM EXEC'
    R.1 = 'Name     Type     Usage    Records  Bytes'
+   If HasHRC100DS then R.1 = R.1 || '    Attribute'
    R.2 = 'TEXM     EXEC            0        3' Right(ExpectedSize, 8)
+   If HasHRC100DS then R.2 = R.2 || ' USER     '
    R.0 = 2
    'WITHSTEM OUTPUT O. COMMAND EXECMAP'
    'EXECDROP * *'

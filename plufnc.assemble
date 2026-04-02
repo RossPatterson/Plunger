@@ -9,9 +9,37 @@ PLUFNC   CSECT ,
 PLUFNCLD $ENTER ,
          L     R10,NUCPLUPT
          USING PRMSECT,R10
-         LA    R3,FUNCTBL     Get address and
-         LA    R4,FUNCCNT        count of func list.
+         LA    R3,FUNCTBLM    Get address and
+         LA    R4,FUNCCNTM       count of main func list.
+         BAL   R9,LOADFNCS    Load 'em up.
          SPACE 3
+         MVC   PRMSVCNP,SVCNPSW  Save CMS's SVC-new PSW.
+         L     R0,=A(SVCHND-PLUFNC)  Take over
+         AR    R0,R12            with our
+         STCM  R0,B'0111',SVCNPSW+5  handler.
+         SPACE 3
+         MVC   PRMPGMNP,PGMNPSW  Save CMS's PGM-new PSW.
+         L     R0,=A(PGMHND-PLUFNC)  Take over
+         AR    R0,R12            with our
+         STCM  R0,B'0111',PGMNPSW+5  handler.
+         LA    R0,ABNXRES     Take over
+         ST    R0,ADMSABXR       with ours.
+         SPACE 3
+         TM    PRMFLAG1,PRMF1EXS  Does CMS have EXIS support?
+         BO    LOADNEXS       Yes, then we don't need ours.
+         LA    R3,FUNCTBLE    Get address and
+         LA    R4,FUNCCNTE       count of EXIS func list.
+         BAL   R9,LOADFNCS    Load 'em up.
+         SPACE 3
+         L     R1,=A(EXEC-PLUFNC)  Put A(our EXEC handler)
+         AR    R1,R12            where PIPMOD
+         ST    R1,NUCPLUEX          can find it.
+LOADNEXS DS    0H
+         SPACE 3
+         SR    R15,R15
+LOADEXIT $EXIT ,
+         SPACE 3
+LOADFNCS DS    0H
 LOADLOOP DS    0H
          USING FUNCENT,R3
          L     R5,FUNCEP      Get entry
@@ -32,27 +60,8 @@ LOADLOOP DS    0H
          SPACE 3
          LA    R3,FUNCLEN(,R3) Go do
          BCT   R4,LOADLOOP       next one.
+         BR    R9
          DROP  R3
-         SPACE 3
-         MVC   PRMSVCNP,SVCNPSW  Save CMS's SVC-new PSW.
-         L     R0,=A(SVCHND-PLUFNC)  Take over
-         AR    R0,R12            with our
-         STCM  R0,B'0111',SVCNPSW+5  handler.
-         SPACE 3
-         MVC   PRMPGMNP,PGMNPSW  Save CMS's PGM-new PSW.
-         L     R0,=A(PGMHND-PLUFNC)  Take over
-         AR    R0,R12            with our
-         STCM  R0,B'0111',PGMNPSW+5  handler.
-         LA    R0,ABNXRES     Take over
-         ST    R0,ADMSABXR       with ours.
-         SPACE 3
-         L     R1,=A(EXEC-PLUFNC)  Put A(our EXEC handler)
-         AR    R1,R12            where PIPMOD
-         ST    R1,NUCPLUEX          can find it.
-         SPACE 3
-LOADEXOK DS    0H
-         SR    R15,R15
-LOADEXIT $EXIT ,
          SPACE 3
 LOADERIN BAL   R14,MSG019     "Error <rc> from NUCEXT SET <name>"
          B     LOADEXIT       Exit.
@@ -67,13 +76,33 @@ PLUFNCUN $ENTER ,
          MVC   PGMNPSW,PRMPGMNP  Restore CMS's PGM-new PSW.
 UNLDNPSW DS    0H
          SPACE 3
-         LA    R1,UNLDEDRP    "EXECDROP * *"
-         SVC   202
+         TM    PRMFLAG1,PRMF1EXS  Does CMS have EXIS support?
+         BO    UNLDNEXD       Yes, skip the "EXECDROP all".
+         CNOP  4,8
+         BAL   R1,UNLDEDRP    Drop all before unloading EXEC* NUCEXTs.
+         DC    CL8'EXECDROP'
+         DC    CL8'*'
+         DC    CL8'*'
+         DC    8X'FF'
+UNLDEDRP SVC   202
          DC    AL4(1)
+UNLDNEXD DS    0H
          SPACE 3
-         LA    R3,FUNCTBL     Get address and
-         LA    R4,FUNCCNT        count of func list.
+         LA    R3,FUNCTBLM    Get address and
+         LA    R4,FUNCCNTM       count of main func list.
+         BAL   R9,UNLDFNCS    Unload the main functions.
+         SPACE 3
+         TM    PRMFLAG1,PRMF1EXS  Does CMS have EXIS support?
+         BO    UNLDNXS        Yes, then we don't need ours.
+         LA    R3,FUNCTBLE    Get address and
+         LA    R4,FUNCCNTE       count of EXIS func list.
+         BAL   R9,UNLDFNCS    Unload the EXIS functions.
+UNLDNXS  DS    0H
+         SR    R15,R15
+UNLDEXIT $EXIT ,
+         SPACE 3
          USING FUNCENT,R3
+UNLDFNCS DS    0H
 UNLDLOOP DS    0H
          XC    WRKPLSTS,WRKPLSTS  Clear out plist.
          NUCEXT CLR,NAME=FUNCNAME,MF=(E,WRKNXCPL),ERROR=1
@@ -81,19 +110,11 @@ UNLDLOOP DS    0H
          BNZ   UNLDERDR       Error, exit.
          LA    R3,FUNCLEN(,R3) Go do
          BCT   R4,UNLDLOOP       next one.
+         BR    R9
          DROP  R3
-         SPACE 3
-UNLDEXOK DS    0H
-         SR    R15,R15
-UNLDEXIT $EXIT ,
          SPACE 3
 UNLDERDR BAL   R14,MSG020     "Error <rc> from NUCEXT CLR <name>"
          B     UNLDEXIT       Exit.
-UNLDEDRP DS    0D
-         DC    CL8'EXECDROP'
-         DC    CL8'*'
-         DC    CL8'*'
-         DC    8X'FF'
          POP   USING
          TITLE 'Messages.'
 MSG002   DS    0H             No WRKSECT on this one, so no MF=E.
@@ -168,18 +189,13 @@ MSG028   DS    0H
          LTORG ,
          POP   USING
          TITLE 'CMS functions to take control of.'
-FUNCTBL  DS    0D
+FUNCTBLM DS    0D
          $FUNC ABNEXIT
-FUNCLEN  EQU   *-FUNCTBL
+FUNCLEN  EQU   *-FUNCTBLM
          $FUNC DMSFNSMC       Another name for FINIS.
          $FUNC EPOINT
          $FUNC ESTATE
          $FUNC ESTATEW
-*        $FUNC EXEC           Only called via BALR.
-         $FUNC EXECDROP
-         $FUNC EXECLOAD
-         $FUNC EXECMAP
-         $FUNC EXECSTAT
          $FUNC GLOBALV
          $FUNC LINERD
 *        $FUNC PGMHND         Only called via PGMNPSW.
@@ -187,7 +203,15 @@ FUNCLEN  EQU   *-FUNCTBL
          $FUNC RDBUF
          $FUNC WAITRD
          $FUNC WRBUF
-FUNCCNT  EQU   (*-FUNCTBL)/FUNCLEN
+FUNCCNTM EQU   (*-FUNCTBLM)/FUNCLEN
+         EJECT ,
+FUNCTBLE DS    0D
+*        $FUNC EXEC           Only called via BALR.
+         $FUNC EXECDROP
+         $FUNC EXECLOAD
+         $FUNC EXECMAP
+         $FUNC EXECSTAT
+FUNCCNTE EQU   (*-FUNCTBLE)/FUNCLEN
          TITLE 'ABNEXIT - Set/clear ABEND handler.'
          PUSH  USING
          USING NUCON,0
@@ -357,7 +381,7 @@ EXECUEPL DS    0H             We have an EPLIST.
          DROP  R1
 EXECEXIS DS    0H
          SPACE 3
-         LA    R1,NUCEXIS-(EXISFWP-EXISBLK)  -> 0th EXISBLK
+         LA    R1,PLUEXIS-(EXISFWP-EXISBLK)  -> 0th EXISBLK
          USING EXISBLK,R1
 EXECEXLP DS    0H
          ICM   R1,B'1111',EXISFWP  Get next EXISBLK
@@ -424,7 +448,7 @@ EXECDROP $ENTER ,
          CLI   24(R3),X'FF'   "EXECDROP","fn","ft",fence?
          BNE   EXDRERST       No, error.
          SPACE 3
-         LA    R2,NUCEXIS-(EXISFWP-EXISBLK)  -> 0th EXISBLK
+         LA    R2,PLUEXIS-(EXISFWP-EXISBLK)  -> 0th EXISBLK
          USING EXISBLK,R2
 EXDREXLP DS    0H
          LR    R4,R2          Save pointer.
@@ -548,8 +572,8 @@ EXLDRDLP DS    0H
          FSCLOSE FSCB=WRKDSKPL,ERROR=1
          LTR   R15,R15        All OK?
          BNZ   EXLDERIO       No, error.
-         MVC   EXISFWP,NUCEXIS  Chain this one
-         ST    R5,NUCEXIS          at the front.
+         MVC   EXISFWP,PLUEXIS  Chain this one
+         ST    R5,PLUEXIS          at the front.
          SR    R15,R15        All's well.
 EXLDEXIT $EXIT ,
          SPACE 3
@@ -572,7 +596,7 @@ EXLDERNF BAL   R14,MSG028     "File <fn> <ft> not found"
 EXECMAP  $ENTER ,
          SPACE 3
          SR    R3,R3          We haven't written the header yet.
-         LA    R2,NUCEXIS-(EXISFWP-EXISBLK)  -> 0th EXISBLK
+         LA    R2,PLUEXIS-(EXISFWP-EXISBLK)  -> 0th EXISBLK
          USING EXISBLK,R2
 EXMPEXLP DS    0H
          ICM   R2,B'1111',EXISFWP  Get next EXISBLK
@@ -612,7 +636,7 @@ EXECSTAT $ENTER ,
          CLI   24(R3),X'FF'   "EXECSTAT","fn","ft",fence?
          BNE   EXSTERST       No, error.
          SPACE 3
-         LA    R2,NUCEXIS-(EXISFWP-EXISBLK)  -> 0th EXISBLK
+         LA    R2,PLUEXIS-(EXISFWP-EXISBLK)  -> 0th EXISBLK
          USING EXISBLK,R2
 EXSTEXLP DS    0H
          ICM   R2,B'1111',EXISFWP  Get next EXISBLK
@@ -1175,7 +1199,7 @@ NUCBREXX DS    A              bREXX address in memory
          ORG   NUCON+X'E70'
 ADMSABXR DS    A              ABNEXIT RESET entrypoint.
          ORG   NUCON+X'E84'
-NUCEXIS  DS    A              EXecInStorage block chain.
+PLUEXIS  DS    A              EXecInStorage block chain.
          ORG   NUCON+X'FF8'
 NUCPLUEX DS    A              -> PLUFNC EXEC handler when ENABLEd.
          ORG   NUCON+X'FFC'

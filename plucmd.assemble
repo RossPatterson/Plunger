@@ -164,6 +164,18 @@ ENABNPRM DS    0H
 ENABGO   DS    0H
          MVC   PRMPLUNG,SCBXORG  Set our module's address.
          SPACE 3
+         CNOP  4,8
+         BAL   R1,ENABEXST
+         DC    CL8'EXECSTAT'
+         DC    CL8'*'
+         DC    CL8'*'
+         DC    8X'FF'
+ENABEXST SVC   202            Does CMS have EXIS support?
+         DC    AL4(1)
+         LTR   R15,R15        Well, does it?
+         BM    *+8            No, skip.
+         OI    PRMFLAG1,PRMF1EXS  Yes, remember that.
+         SPACE 3
          $CALL PLUFNCLD       Load all our function takeovers.
          OI    PRMFLAG1,PRMF1ENA  Say we're enabled.
          SPACE 3

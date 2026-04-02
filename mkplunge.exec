@@ -3,7 +3,6 @@ Arg Operands '(' Options
 If Operands <> '' | Word(Operands, 1) = '?' then Signal Usage
 Signal on Error
 
-Version = '0.1.27'
 OptDebug = 0
 Do While Options <> ''
    Parse var Options Option Options
@@ -20,11 +19,10 @@ Signal off Error
 'ERASE PLUCONFG COPY A'
 'SET CMSTYPE RT'
 Signal on Error
-C.0 = 4
+C.0 = 3
 C.1 = Left("         GBLB  &DEBUG         Are we debugging?", 80)
 C.2 = Left("&DEBUG   SETB " OptDebug, 80)
-C.3 = Left("         GBLC  &PLUVERS       Version number", 80)
-C.4 = Left("&PLUVERS SETC '" || Version || "'", 80)
+C.3 = Left("         COPY  PLUVERS        Set version number.", 80)
 'EXECIO' C.0 'DISKW PLUCONFG COPY A 1 F 80 (FINIS STEM C.'
 'VMFMAC PLUNMAC PLUNGER'
 'ERASE PLUCONFG COPY A'
@@ -58,6 +56,6 @@ Say 'Error' RC 'in line' SigL':' SourceLine(SigL)
 Exit RC
 
 Usage:
-Say 'Syntax: MKPLUNGE [ ( [NO]DEBUG ]'
-Say 'Defaults: NODEBUG HRC100 AUTO'
+Say 'Syntax: MKPLUNGE [ ( [NO]DEBUG [ ) ]'
+Say 'Defaults: NODEBUG'
 Exit 1

@@ -1,6 +1,9 @@
 /* Unit tests for the PLUNGER command. */
 
 TestSetup:
+   /* Is HRC100DS installed? */
+   Call NoError 'EXECSTAT * *'
+   HasHRC100DS = (RC <> -3)
    'SET CMSTYPE HT'
 
    /* Provoke loading of RXUSERFN, so it doesn't disturb NUCXMAP output. */
@@ -82,6 +85,7 @@ TestDebugNotEnabled:
 
 TestDisable:
    ExpectedDifference = 16
+   If HasHRC100DS then ExpectedDifference = ExpectedDifference - 4 /* CMS already has EXECDROP et al. */
    'PLUNGER ENABLE'
    'WITHSTEM OUTPUT NBEFORE. COMMAND NUCXMAP'
    'WITHSTEM OUTPUT O. COMMAND PLUNGER DISABLE'
@@ -107,6 +111,7 @@ TestDisableTwice:
 
 TestEnable:
    ExpectedDifference = 17 /* 16 functions + PLUNGER */
+   If HasHRC100DS then ExpectedDifference = ExpectedDifference - 4 /* CMS already has EXECDROP et al. */
    'WITHSTEM OUTPUT NBEFORE. COMMAND NUCXMAP'
    'WITHSTEM OUTPUT O. COMMAND PLUNGER ENABLE'
    Call AssertEqual 0, O.0
@@ -162,6 +167,7 @@ TestPurge:
 TestReset:
    /* PLUNGER treats the NUCXDROP warning as DISABLE. */
    ExpectedDifference = 17 /* 16 functions + PLUNGER */
+   If HasHRC100DS then ExpectedDifference = ExpectedDifference - 4 /* CMS already has EXECDROP et al. */
    'PLUNGER ENABLE'
    'WITHSTEM OUTPUT NBEFORE. COMMAND NUCXMAP'
    'NUCXDROP PLUNGER'

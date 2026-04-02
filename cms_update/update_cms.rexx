@@ -8,7 +8,6 @@ DownloadDir = WorkDir || '/downloads'
 UploadDir = WorkDir || '/uploads'
 
 /* Detach some devices so we can reconfigure them.  Do this now, so they stabilize before the "attach"es. */
-'herccontrol "detach 00c"'
 'herccontrol "detach 9f0"'
 'sleep 5'	/* Because "detach" is timing-related and may respond variously :-( */
 
@@ -16,16 +15,15 @@ UploadDir = WorkDir || '/uploads'
 
 /* Download each update we need. */
 /*        Groups.io only allows logged-in members to download files, so we'll used copies Ross saved instead :-( */
+'cd' DownloadDir '; wget -nv -O "hrc100ds_v2.vmarc" "https://www.dropbox.com/scl/fi/maa0nughdkz4e9fc6prpu/hrc100ds_v2.vmarc?rlkey=vkj0l624g5qkz8v4fih564d4b&dl=0"'
 'cd' DownloadDir '; wget -nv -O "hrc405ds.vmarc" "https://www.dropbox.com/scl/fi/oqkdn3dgyrbwcjlz79fm6/hrc405ds.vmarc?rlkey=jz9mcrknezzeqptuw1mk5r88z&dl=0"'
 'cd' DownloadDir '; wget -nv -O "hrc422ds.vmarc" "https://www.dropbox.com/scl/fi/ej7418pmklk1kusn4iqs1/hrc422ds.vmarc?rlkey=7m8q0bm0w4klumss4llqku2n7&dl=0"'
 'cd' DownloadDir '; wget -nv -O "rap016ds.vmarc" "https://www.dropbox.com/scl/fi/n36o850g3t6y0ovak05ju/rap016ds.vmarc?rlkey=50oiyap2qigd7mdk2ydj5ep04&dl=0"'
 'cd' DownloadDir '; wget -nv -O BREXX.zip "https://github.com/RossPatterson/CMS-370-BREXX/releases/download/v1.2.0/BREXX.zip"'
+'cd' DownloadDir '; mv hrc100ds_v2.vmarc hrc100ds.vmarc'
 'cd' DownloadDir '; mv *.vmarc' UploadDir
 'cd' DownloadDir '; unzip -j BREXX.zip BREXX/gccbrx.cckd ; mv gccbrx.cckd' UploadDir
 'cd' DownloadDir '; rm BREXX.zip'
-
-/* Attach a card reader without ASCII translation. */
-'herccontrol "attach 00c 3505 localhost:3505 sockdev ebcdic eof" -w "HHCSD020I"'
 
 /* Install the latest gccbrx.cckd disk image for bREXX. */
 'mv' UploadDir || '/gccbrx.cckd /opt/hercules/vm370/'
@@ -85,6 +83,7 @@ UploadDir = WorkDir || '/uploads'
 'herccontrol "/COPY _ASMALL EXEC B (RECFM F LRECL 80 REPLACE OLDDATE" -w "^Ready;"'
 Call UploadAndUnpack UploadDir || '/hrc405ds.vmarc', 'MAINT', 'NUCEXT and SUBCOM macro and function fixes.'
 Call UploadAndUnpack UploadDir || '/hrc422ds.vmarc', 'MAINT', 'NUCXTEXT occasionally causes DMSLIO109S.'
+Call UploadAndUnpack UploadDir || '/hrc100ds.vmarc', 'MAINT', 'In-storage EXEC and FBLOCK support.'
 Call UploadAndUnpack UploadDir || '/rap016ds.vmarc', 'MAINT', 'BALR to TYPLIN through ADMSCWR.'
 
 /* Now everything is unpacked to F and A is empty. */

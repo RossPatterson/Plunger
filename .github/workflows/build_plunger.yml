@@ -17,12 +17,13 @@ jobs:
           sparse-checkout: cms_update
 
       - name: Start Hercules
-        working-directory: /opt/hercules/vm370
         run: |
           mkdir -p /opt/hercules/vm370/io
+          cp hercules.conf /opt/hercules/vm370
           chmod -R ugo+rw /opt/hercules/vm370/*
           . /opt/hercules/vm370/setup.sh
-          hercules -f hercules.conf -d >/dev/null 2>/dev/null &
+          cd /opt/hercules/vm370
+          hercules -f /opt/hercules/vm370/hercules.conf -d >/dev/null 2>/dev/null &
 
       - name: Update CMS
         run: |
@@ -91,12 +92,14 @@ jobs:
         shell: bash
 
       - name: Start Hercules
-        working-directory: /opt/hercules/vm370
         run: |
           mkdir -p /opt/hercules/vm370/io
+          cp ~/build_work/repo/hercules.conf /opt/hercules/vm370
           chmod -R ugo+rw /opt/hercules/vm370/*
           . /opt/hercules/vm370/setup.sh
-          hercules -f hercules.conf -d >/dev/null 2>/dev/null &
+          cd /opt/hercules/vm370
+          ls -l
+          hercules -f /opt/hercules/vm370/hercules.conf -d >/dev/null 2>/dev/null &
 
       - name: Build
         id: build
@@ -164,12 +167,14 @@ jobs:
           path: ~/build_work/downloads
 
       - name: Start Hercules
-        working-directory: /opt/hercules/vm370
         run: |
           mkdir -p /opt/hercules/vm370/io
+          cp ~/build_work/repo/hercules.conf /opt/hercules/vm370
           chmod -R ugo+rw /opt/hercules/vm370/*
           . /opt/hercules/vm370/setup.sh
-          hercules -f hercules.conf -d >/dev/null 2>/dev/null &
+          cd /opt/hercules/vm370
+          ls -l
+          hercules -f /opt/hercules/vm370/hercules.conf -d >/dev/null 2>/dev/null &
 
       - name: Test
         working-directory: /opt/hercules/vm370
@@ -178,9 +183,6 @@ jobs:
           BUILD_TIME: ${{needs.build.outputs.BUILD_TIME}}
           VERSION_STRING: ${{needs.build.outputs.VERSION_STRING}}
         run: |
-          chmod -R ugo+rw *
-          . /opt/hercules/vm370/setup.sh
-          hercules -f hercules.conf -d >/dev/null 2>/dev/null &
           cd ~/build_work/repo
           vma -x -c -m0 -t ~/build_work/download/plunger.vmarc TEST SH
           chmod +x test.sh

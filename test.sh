@@ -13,10 +13,6 @@ BUILD_DATE="$2"
 BUILD_TIME="$3"
 EXITRC=1
 
-# Detach the card reader so we can reconfigure it  Do this now, so it stabilizes before the "attach".
-herccontrol "detach 00c"
-sleep 5	# Because "detach" is timing-related and may respond variously :-(
-
 DOWNLOADS=~/build_work/downloads
 UPLOADS=~/build_work/uploads
 mkdir -p $DOWNLOADS $UPLOADS
@@ -25,9 +21,6 @@ cd ~/build_work/repo
 
 # Download the CMS Pipelines Runtime Library Distribution.
 wget -nv "https://www.dropbox.com/scl/fi/psc0xhg8pcxa6vyct0180/runtime.vmarc?rlkey=sez02fzkkkrz7u12gmuat2kvk&dl=0" -O $DOWNLOADS/runtime.vmarc
-
-# Attach a card reader without ASCII translation.
-herccontrol "attach 00c 3505 localhost:3505 sockdev ebcdic eof" -w "HHCSD020I"
 
 # IPL VM/370
 herccontrol "IPL 6A1" -w "USER DSC LOGOFF AS AUTOLOG1" -f "$MARKER"
@@ -86,7 +79,7 @@ if [ "$BUILD_TIME" != "$MY_BUILD_TIME" ] ; then
 fi
 
 # Test the project.
-herccontrol "/REXXUNIT (TYPE" -w "^Ready"
+herccontrol "/REXXUNIT (TYPE" -w "^Ready;"
 EXITRC=0
 
 # Shut VM down.

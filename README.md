@@ -64,7 +64,7 @@ expects to exist there.
 Distribution_](http://vm.marist.edu/~pipeline/index.html#Runtime). You want the
 "All executables" and "All documentation" archive (_i.e_, `VMARC`) files.
 
-1. Get the _Plunger_ package from 
+1. Get the _Plunger_ package from
 [GitHub](https://github.com/RossPatterson/Plunger/releases).
 
 1. Upload the `RUNTIME VMARC` and `PLUNGER VMARC` files to CMS in binary as
@@ -80,7 +80,7 @@ RECFM F and LRECL 80.
 	VMARC UNPACK PLUNGER VMARC fm PLUNGER MODULE fm (OLDDATE
 	```
 
-1. Optionally see the 
+1. Optionally see the
 [Pipelines documentation note](#pipelines-documentation) below about
 documentation.
 
@@ -101,14 +101,14 @@ frankly every CMS user ought to have.  The `RTDOC1 VMARC` package contains
 documentation that will probably only be useful on a non-CMS system (_i.e._,
 PDF and Postscript files) - in particular, Hartmann's "_CMS Pipelines
 User’s Guide and Reference_" (as `PIPELINE.PDF`).  The `RTDOC2 VMARC` package
-contains all the other files, and can be uploaded to CMS and unpacked.  
+contains all the other files, and can be uploaded to CMS and unpacked.
 
 ### Pipelines HELP
 _CMS Pipelines_ has a collection of almost 1,400 HELP files (approximately 15
 3350 cylinders), documenting each comand (`HELPCMS`), stage (`HELPPIPE`),
 subcommand (`HELPPIPC`), syntax element (`HELPPIPS`), and message (`HELPMSG`).
 All of it is available in the _CMS Pipelines Runtime Library Distribution_, in
-the `RUNTIME VMARC` package, but it must be extracted and installed to 
+the `RUNTIME VMARC` package, but it must be extracted and installed to
 useful on VM/370. The process to do so is documented at the
 [_CMS Pipelines Runtime Distribution_ website](http://vm.marist.edu/~pipeline/install.html),
 and the following recommended procedure is based upon it:
@@ -175,7 +175,7 @@ packages:
    ```
 
 1. Move the generated files and the updated `HELP HELPTASK` file to a minidisk
-where CMS users can accessthem (_e.g._, the CMS `MAINT 19D` HELP disk).  
+where CMS users can accessthem (_e.g._, the CMS `MAINT 19D` HELP disk).
 
 1. Optionally, delete all the files extracted in the first step:
    ```

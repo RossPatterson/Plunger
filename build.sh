@@ -10,10 +10,6 @@ set -e
 # Show the commands.
 set -x
 
-# Detach the card reader so we can reconfigure it  Do this now, so it stabilizes before the "attach".
-herccontrol "detach 00c"
-sleep 5	# Because "detach" is timing-related and may respond variously :-(
-
 # Install the Pandoc documentation file converter.
 apt-get update
 apt-get install --no-install-recommends -y pandoc python3-venv
@@ -26,9 +22,6 @@ cd ~/build_work/repo
 # Make the source upload.
 mv UNLICENSE.txt UNLICENS.memo
 vma -a -m0 -t -s asis ~/build_work/gitsrc.vmarc *.*
-
-# Attach a card reader without ASCII translation.
-herccontrol "attach 00c 3505 localhost:3505 sockdev ebcdic eof" -w "HHCSD020I"
 
 # IPL VM/370
 herccontrol "ipl 6a1" -w "USER DSC LOGOFF AS AUTOLOG1"
