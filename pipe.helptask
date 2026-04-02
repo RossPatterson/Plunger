@@ -1,0 +1,5 @@
+MESSAGE   HELPMSG  Show messages
+PIPC      HELPPIPC Show Pipelines Rexx commands
+PIPE      HELPPIPE Show Pipelines stages
+PIPM      HELPPIPM Show Pipelines topics
+PIPS      HELPPIPS Show Pipelines syntax elemebts

@@ -1,6 +1,6 @@
 @SETLOCAL
 @REM
-@REM Requires Lucius Leland's vma.exe from https://www.homerow.net/zvm/vma/
+@REM Requires Leland Lucius's vma.exe from https://www.homerow.net/zvm/vma/
 @REM
 @DEL rtdoc1.vmarc rtdoc2.vmarc
 
