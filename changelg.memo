@@ -1,3 +1,9 @@
+I0002 - Make CMS stage work.
+        * Forced CMS stage to take CMS 5.5 codepath and avoid assertion
+          failure 1C8.
+        * Implemented some post-S/370 instructions (AHI, BRC, BSM, CHI) CMS
+          stage requires.
+        * Requires unpublished dependency RAP016DS to capture console output.
 I0001 - Cooperate with HRC100DS if installed.
 I0004 - Automate builds and releases.
 I0005 - Uplevel RexxUnit.

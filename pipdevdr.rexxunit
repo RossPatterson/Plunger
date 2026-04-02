@@ -44,6 +44,13 @@ TestConsoleOutput:
    Call AssertStemIdentical 'Msg.', 'Out.'
    Return
 
+TestCms:
+   Parse upper source . . MyFn MyFt .
+   'PIPE cms LISTFILE' MyFn MyFt '| stem Out.'
+   Call AssertStartsWith Left(MyFn,8) Left(MyFt,8) 'A', Value('Out.1')
+   Call AssertEqual 1, Out.0
+   Return
+
 TestCp:
    'EXECIO * CP ( STEM Ref. STRING Q V CONS'
    'PIPE CP QUERY V CONS | stem Out.'

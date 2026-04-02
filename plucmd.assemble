@@ -200,7 +200,7 @@ ENABEXST SVC   202            Does CMS have EXIS support?
          DROP  R12
          LA    R13,WRKSAVE    Pass savearea.
          CNOP  4,8
-         BAL   R1,ENABNXLD    Load PIPMOD.
+         BAL   R1,ENABNXLD    Load PIPELINE.
          DC    CL8'NUCXLOAD'
          DC    CL8'PIPMOD'
          DC    CL8'PIPELINE'

@@ -50,7 +50,7 @@ herccontrol "/ERASE PLUNGER VMARC A" -w "^Ready;"
 # Upload the CMS Pipelines Runtime Library Distribution to VM.
 rexx ./cms_update/upload_file.rexx $DOWNLOADS/runtime.vmarc "CMSUSER"
 
-# Get PIPMOD MODULE from it.
+# Get PIPELINE MODULE from it.
 herccontrol "/VMARC UNPK RUNTIME VMARC A PIPELINE MODULE A (OLDDATE" -w "^Ready;"
 herccontrol "/ERASE RUNTIME VMARC A" -w "^Ready;"
 

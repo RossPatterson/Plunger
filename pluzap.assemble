@@ -122,7 +122,7 @@ MSG018   DS    0H
          LA    R15,18
          BR    R14
          POP   USING
-         TITLE 'Main ZAPs to always apply to PIPMOD.'
+         TITLE 'Main ZAPs to always apply to PIPELINE.'
 ZAPTBL1  DS    0D
          EJECT ,
 ZAP001   DS    0X
@@ -139,27 +139,15 @@ ZAP001   DS    0X
          $ZAP  REP,248E8,47F0C164         B     X'164'(,R12)
          $ZAP  RESET
          EJECT ,
-ZAP002   DS    0X
-*
-*        PIPMOD uses BSM R14,0 without gating it by a test for
-*        390 mode.  So NOP it out.
-*
-         $ZAP  VER,22EEE,1FEE             SLR  R14,R14
-         $ZAP  VER,22EF0,0BE0             BSM  R14,0
-         $ZAP  VER,22EF2,16FE             OR   R15,R14
-         $ZAP  REP,22EF0,0700             NOPR 0
-         $ZAP  RESET
-         EJECT ,
 ZAP003   DS    0X
 *
-*        PIPMOD tests NUCMFLAG in several places to determine what
+*        PIPELINE tests NUCMFLAG in several places to determine what
 *        sort of CMS it is running in.  But that  byte was originally
 *        DCSSFLG in VM/370, until it was turned into a spare byte in
 *        VM/SP, and later re-used.  So the check is wrong.  This ZAP
-*        takes over a different spare byte, NUCCFA, and lets PIPMOD set
-*        and lets PIPMOD set either NUCMEC or NUCM370 in it, depending
-*        on whether CMS is running in EC mode or not, and then test
-*        that everywhere.
+*        takes over a different spare byte, NUCCFA, and lets PIPELINE
+*        set either NUCMEC or NUCM370 in it, depending on whether CMS
+*        is running in EC mode or not, and then test that everywhere.
 *
          $ZAP  VER,0856E,91A605EA         TM    NUCMFLAG,NUCMXA+...
          $ZAP  REP,0856E,91A60CFA         TM    NUCCFA,NUCMXA+...
@@ -197,7 +185,7 @@ ZAP003   DS    0X
          EJECT ,
 ZAP004   DS    0X
 *
-*        DIAG 0 in VM/370 doesn't set the "VM/SP" bit, so PIPMOD
+*        DIAG 0 in VM/370 doesn't set the "VM/SP" bit, so PIPELINE
 *        thinks we're running VM/XA mode.  So patch the DIAG to
 *        call S199DI00 instead, where we'll set it.
 *
@@ -210,7 +198,7 @@ ZAP004   DS    0X
          EJECT ,
 ZAP005   DS    0X
 *
-*        PIPMOD uses a newer version of FVS than VM/370's, and gets
+*        PIPELINE uses a newer version of FVS than VM/370's, and gets
 *        STATER0 from the wrong place.
 *
          $ZAP  VER,E2B0,58500600          L    R5,AFVS
@@ -220,11 +208,24 @@ ZAP005   DS    0X
          EJECT ,
 ZAP006   DS    0X
 *
-*        PIPMOD calls RENAME (NOUPDIR, but VM/370 R6 expects (NOUPDIRT.
+*        PIPELINE calls RENAME (NOUPDIR, but VM/370 R6 expects
+*        (NOUPDIRT.
 *
          $ZAP  VER,DA58,D9C5D5C1D4C54040  DC   CL8'RENAME  '
          $ZAP  VER,DA80,D5D6E4D7C4C9D940  DC   CL8'NOUPDIR '
          $ZAP  REP,DA80,D5D6E4D7C4C9D9E3  DC   CL8'NOUPDIRT'
+         $ZAP  RESET
+         EJECT ,
+ZAP008   DS    0X
+*
+*        The CMS and COMMAND stages seem to be written for CMS5.5 and
+*        later.  We've implemented everything it needs, so we force it
+*        down the CMS5.5 code path.
+*
+         $ZAP  VER,75F2E,9106B0C4         TM    X'0C4'(R11),X'06'
+         $ZAP  VER,75F32,4770C014         BNZ   X'014'(,R12)
+         $ZAP  VER,75F36,000001C8         DC    H'0'X'01C8'
+         $ZAP  REP,75F32,47F0C014         B     X'014'(,R12)
          $ZAP  RESET
          EJECT ,
          $ZAP  END
@@ -232,9 +233,9 @@ ZAP006   DS    0X
 ZAPTBL2  DS    0D
 ZAP007   DS    0X
 *
-*        PIPMOD calls EXEC via BALR to run Rexx stages.  Make it call
-*        bREXX directly, because DMSEXC doesn't know about in-storage
-*        EXECs.
+*        PIPELINE calls EXEC via BALR to run Rexx stages.  Make it
+*        call bREXX directly, because DMSEXC doesn't know about
+*        in-storage EXECs.
 *
          $ZAP  VER,99B8A,58F00690         L    R15,AEXEC
          $ZAP  REP,99B8A,58F00FF8         L    R15,NUCPLUEX

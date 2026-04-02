@@ -32,7 +32,7 @@ PLUFNCLD $ENTER ,
          BAL   R9,LOADFNCS    Load 'em up.
          SPACE 3
          L     R1,=A(EXEC-PLUFNC)  Put A(our EXEC handler)
-         AR    R1,R12            where PIPMOD
+         AR    R1,R12            where PIPELINE
          ST    R1,NUCPLUEX          can find it.
 LOADNEXS DS    0H
          SPACE 3
@@ -847,7 +847,15 @@ PGMHND   DS    0H
          LR    R12,R11          up
          SR    R12,R1              common
          USING PLUFNC,R12             base.
+         L     R1,PGMOPSW+4
+         IC    R0,PGMOPSW+4   Get
+         N     R0,=X'000000C0'   ILC
+         SRL   R0,5                 in bytes.
+         SR    R1,R0          Back up to failing instruction.
+         CLC   =H'1',PGMOPSW+2  Operation exception?
+         BE    PGM0001        Yes, handle it.
          SPACE 3
+PGMHPASS DS    0H
          L     R10,NUCPLUPT
          USING PRMSECT,R10
          ICM   R15,B'1111',PRMABNEX  Do we have an ABNEXIT?
@@ -875,6 +883,119 @@ PGMH2CMS DS    0H             Pass
          MVC   IPLPSW,PRMPGMNP   the
          LM    R0,R15,LOWSAVE       program check
          LPSW  IPLPSW                  to CMS.
+         SPACE 3
+PGMHRTCC DS    0H             Set CC and return.
+         BALR  R1,0           Get
+         SRL   R1,24             new
+         N     R1,=A(X'30')         CC.
+         IC    R2,PGMOPSW+4   Get old
+         N     R2,=A(X'CF')      ILC+mask (no CC).
+         OR    R1,R2          Merge 'em.
+         STC   R1,PGMOPSW+4   Update old psw.
+PGMHRTRN DS    0H
+         LM    R0,R15,LOWSAVE  Handler will update any it cares to.
+         LPSW  PGMOPSW        Return to caller.
+         TITLE 'PGM0001 - Operation exception handler'
+PGM0001  DS    0H
+         CLI   0(R1),X'0B'    BSM?
+         BE    P0010B         Yes, handle it.
+         CLI   0(R1),X'A7'    One of the A7rX opcodes?
+         BE    P001A7         Yes, maybe handle it.
+         B     PGMHPASS       None of the above, let it crash
+         SPACE 3
+P0010B   DS    0H             0B: Branch and Set Mode
+         SPACE 3
+         IC    R2,1(,R1)      Get
+         N     R2,=A(X'F0')      R1
+         SRL   R2,2                 offset.
+         BZ    P0010BG        Skip if register 0.
+         LA    R2,LOWSAVE(R2)  Get register location.
+         NI    0(R2),B'0111111'  We're always in 24-bit mode.
+P0010BG  DS    0H
+         IC    R3,1(,R1)      Get
+         N     R3,=A(X'0F')      R2
+         SRL   R3,2                 offset.
+         BZ    P0010BH        Skip if register 0.
+         LA    R3,LOWSAVE(R3)  Get register location.
+         MVC   PGMOPSW+3(3),0(R3)  Set new address.
+P0010BH  DS    0H
+         B     PGMHRTRN       Return with unchanged CC.
+         SPACE 3
+         SPACE 3
+P001A7   DS    0H
+         IC    R0,1(,R1)      Get opcode
+         N     R0,=A(X'0F')      extension nibble.
+         CH    R0,=Y(X'4')    BRC?
+         BE    P001A74        Yes, do it.
+         CH    R0,=Y(X'A')    AHI?
+         BE    P001A7A        Yes, do it.
+         CH    R0,=Y(X'E')    CHI?
+         BE    P001A7E        Yes, do it.
+         B     PGMHPASS       None of the above, let it crash.
+         SPACE 3
+P001A74  DS    0H             A7x4: Branch Relative Conditional
+         SPACE 3
+         TM    1(R1),X'F0'    Maybe NOP or B?
+         BZ    PGMHRTRN       0000: NOP.
+         BO    P001A74K       1111: B.
+*                             Mixed: work a little harder.
+         IC    R2,PGMOPSW+4   Get
+         N     R2,=A(X'30')      CC
+         SRL   R2,2                 * 4.
+         B     *+4(R2)        Handle it.
+         B     P001A74G       CC0
+         B     P001A74H       CC1
+         B     P001A74I       CC2
+         B     P001A74J       CC3
+         DC    H'0,6'         Can't get here.
+         SPACE 3
+P001A74G DS    0H             CC0
+         TM    1(R1),B'1000'  Mask have CC0 set?
+         BO    P001A74K       Yes, take branch.
+         B     PGMHRTRN       No, no-op.
+         SPACE 3
+P001A74H DS    0H             CC1
+         TM    1(R1),B'0100'  Mask have CC1 set?
+         BO    P001A74K       Yes, take branch.
+         B     PGMHRTRN       No, no-op.
+         SPACE 3
+P001A74I DS    0H             CC2
+         TM    1(R1),B'0010'  Mask have CC2 set?
+         BO    P001A74K       Yes, take branch.
+         B     PGMHRTRN       No, no-op.
+         SPACE 3
+P001A74J DS    0H             CC3
+         TM    1(R1),B'0001'  Mask have CC3 set?
+         BO    P001A74K       Yes, take branch.
+         B     PGMHRTRN       No, no-op.
+         SPACE 3
+P001A74K DS    0H             Take the branch.
+         LH    R3,2(,R1)      Get RI2 value
+         AR    R3,R3             in bytes.
+         L     R4,PGMOPSW+4   Get
+         N     R4,=A(X'FFFFFF')  old
+         SH    R4,=H'4'             address.
+         AR    R4,R3          Update address
+         STCM  R4,B'0111',PGMOPSW+5  Update PSW.
+         B     PGMHRTRN       Return with unchanged CC.
+         SPACE 3
+P001A7A  DS    0H             A7xA: Add Halfword Immediate
+         SPACE 3
+         IC    R2,1(,R1)      Get
+         N     R2,=A(X'F0')      R1
+         SRL   R2,2                 offset.
+         L     R3,LOWSAVE(R2)  Get register value.
+         AH    R3,2(,R1)      Add immediate value.
+         ST    R3,LOWSAVE(R2)  Update it.
+         B     PGMHRTCC       Return with updated CC.
+         SPACE 3
+P001A7E  DS    0H             A7xE: Compare Halfword Immediate
+         IC    R2,1(,R1)      Get
+         N     R2,=A(X'F0')      R1
+         SRL   R2,2                 offset.
+         L     R3,LOWSAVE(R2)  Get register value.
+         CH    R3,2(,R1)      Compare against immediate value.
+         B     PGMHRTCC       Return with updated CC.
          LTORG ,
          POP   USING
          TITLE 'SVCHND - Persistent SVC handler'
@@ -943,10 +1064,10 @@ S109RSET DS    0H
          ST    R1,LOWSAVE+(1*4)  to CMS.
          DROP  R10
          B     SVCHPASS       Let CMS run 109 as 14.
-         TITLE 'SVC199 - Patch PIPMOD the hard way.'
+         TITLE 'SVC199 - Patch PIPELINE the hard way.'
 SVC199   DS    0H
 *
-*        Patch PIPMOD the hard way.  There are a few things we can't
+*        Patch PIPELINE the hard way.  There are a few things we can't
 *        easily do as ZAPs.
 *
          L     R1,SVCOPSW+4   -> H'subcode'
