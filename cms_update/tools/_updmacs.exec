@@ -1,0 +1,82 @@
+/* _UPDMACS - Merge CMSHRC EXEC * with newly-added and newly-updated COPY and MACRO files. */
+Signal On Error
+Arg OutFn OutFt OutFm .
+
+Seen. = 0
+OutCount = 0
+
+/* Start with all the pre-existing-updated MACRO and COPY files. */
+Lines.0 = 0
+Call NoErrors 'EXECIO * DISKR' OutFn OutFt 'F (FINIS STEM LINES.'
+Do I = 1 to Lines.0
+    Parse var Lines.I . . Fn .
+    If Seen.Fn then Iterate
+    OutCount = OutCount + 1; OutLines.OutCount = Left(Lines.I, 80)
+    Seen.Fn = 1
+End
+
+/* Add any updated MACRO and COPY files we've staged. */
+Lines.0 = 0
+Call NoErrors 'EXECIO * DISKR' OutFn OutFt 'B (FINIS STEM LINES.'
+Do I = 1 to Lines.0
+    Parse var Lines.I . . Fn .
+    If Seen.Fn then Iterate
+    OutCount = OutCount + 1; OutLines.OutCount = Left(Lines.I, 80)
+    Seen.Fn = 1
+End
+
+/* Add any new MACRO and COPY files. */
+Call NoErrors 'LISTFILE * COPY  A ( FTYPE EXEC'
+Call NoErrors 'LISTFILE * MACRO A ( FTYPE APPEND'
+Lines.0 = 0
+Call NoErrors 'EXECIO * DISKR CMS EXEC A (FINIS STEM Lines.'
+Call NoErrors 'ERASE CMS EXEC A'
+Do I = 1 to Lines.0
+    Parse var Lines.I . . Fn .
+    If Seen.Fn then Iterate
+    OutCount = OutCount + 1; OutLines.OutCount = Left(Lines.I, 80)
+    Seen.Fn = 1
+End
+
+/* Add any newly-updated MACRO and COPY filess. */
+Call NoErrors 'LISTFILE * HRC*  A ( FTYPE EXEC'
+Call NoErrors 'LISTFILE * RAP*  A ( FTYPE APPEND'
+Lines.0 = 0
+Call NoErrors 'EXECIO * DISKR CMS EXEC A (FINIS STEM LINES.'
+Do I = 1 to Lines.0
+    Parse var Lines.I . . Fn .
+    Select
+        When Seen.Fn then Iterate
+        When NoErrors('STATE' Fn 'ASSEMBLE *') = 0 then Iterate /* See notes about conflicts of names. */
+        When NoErrors('STATE' Fn 'MACRO *') = 0 then MacroFt = 'MACRO'
+        When NoErrors('STATE' Fn 'COPY *') = 0 then MacroFt = 'COPY'
+        Otherwise Iterate
+    End
+    OutCount = OutCount + 1; OutLines.OutCount = Left(' &1 &2' Left(Fn, 8) Left(MacroFt, 8), 80)
+    Seen.Fn = 1
+End
+OutLines.0 = OutCount
+'EXECIO' OutLines.0 'DISKW' OutFn OutFt OutFm '1 F 80 ( FINIS STEM OUTLINES.'
+
+Call NoErrors 'ERASE CMS EXEC A'
+
+Exit 0
+
+
+Error:
+Say 'Error' RC 'in line' SigL':' SourceLine(SigL)
+Exit RC
+
+
+NoErrors:
+
+    Signal off Error
+    'SET CMSTYPE HT'
+    Arg(1)
+    $RC = RC
+    'SET CMSTYPE RT'
+    Signal on Error
+    RC = $RC
+    Drop $RC
+
+Return RC

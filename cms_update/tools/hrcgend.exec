@@ -1,0 +1,96 @@
+/* HRCGEND - Wrapper around CMSGEND to build modules it doesn"t know about. */
+Arg ModuleFn Options
+
+GenData.         = ""
+GenData.EXECIO   = "XIOT"
+GenData.NUCXDROP = "NXDT"
+GenData.NUCXMAP  = "NXMT"
+GenData.NUCXTEXT = "NXTT"
+GenData.RXSYSFN  = "RSFTY"
+
+If GenData.ModuleFn <> '' then Call Gen ModuleFn, GenData.ModuleFn, Options
+Else "CMSGEND" ModuleFn Options
+
+Exit RC
+
+
+Error:
+Say "Error" RC "in line" SigL":" SourceLine(SigL)
+Exit RC
+
+
+/* ModOpts and CmdOpts values are the same as for CMSGEND EXEC - go read them there. */
+Gen: Procedure expose RC
+Arg ModuleFn, Mod +3 ModOpts ., CmdOpts
+
+Parm. = ""
+Signal off Error
+Say "*** Current status:"
+Call NoErrors "STATEW" ModuleFn "MODULE A2"
+Opt._NewR = (RC = 0)
+If RC = 0 then Say "*** File '" ModuleFn "MODULE A2' exists"
+Else Say "*** File '" ModuleFn "MODULE A2' does not exist"
+Call NoErrors "STATEW" ModuleFn "MODOLD A1"
+Opt._OldR = (RC = 0)
+If RC = 0 then Say "*** File ' || ModuleFn "MODOLD A1' exists"
+Else Say "*** File ' || ModuleFn "MODOLD A1' does not exist"
+Signal on Error
+
+Opt._All     = Pos("A", ModOpts) > 0
+Opt._DOS     = Pos("D", ModOpts) > 0
+Opt._DMK     = Pos("K", ModOpts) > 0
+Opt._OS      = Pos("O", ModOpts) > 0
+Opt._Trans   = Pos("T", ModOpts) > 0
+Opt._Strinit = Pos("S", ModOpts) > 0
+Opt._System  = Pos("Y", ModOpts) > 0
+
+If \Opt._All & \Opt._DOS then Opt._OS = 1
+
+If Opt._DMK then Parm._Mod = "DMK" || Mod
+Else Parm._Mod = "DMS" || Mod
+
+If Opt._Strinit then Parm._System = "SYSTEM"
+If Opt._System then Parm._System = "SYSTEM"
+If Opt._Trans then Parm._Origin = "ORIGIN TRANS"
+Select
+    When Opt._All then Parm._OS = "ALL"
+    When Opt._DOS then Parm._OS = "DOS"
+    When Opt._OS then Parm._OS = "OS"
+    Otherwise Nop
+End
+If WordPos("NOCLEAR", CmdOpts) = 0 then Parm._Clear = "CLEAR"
+If WordPos("MAP", CmdOpts) = 0 then Parm._Map = "NOMAP"
+If WordPos("NOINV", CmdOpts) <> 0 then Parm._Inv = "NOINV"
+If Opt._Trans then Parm._Clear = ""
+
+"STATE" Parm._Mod "TEXT *"
+
+"LOAD" Parm._Mod "(TYPE" Parm._Origin Parm._Map Parm._Clear Parm._Inv
+"GENMOD CMSGEND (" Parm._MAP Parm._System Parm._OS Parm._Strinit Parm._From Parm._To
+
+If Opt._OldR then "ERASE" ModuleFn "MODOLD A"
+If Opt._NewR then "RENAME" ModuleFn " MODULE A2 " ModuleFn " MODOLD A1 (NOUPDIRT"
+"RENAME CMSGEND MODULE A1 " ModuleFn " MODULE A2"
+
+Say "*** Results:"
+If Opt._OldR then Say "*** File '" ModuleFn "MODOLD A1' was erased"
+If Opt._NewR then Say "*** File '" ModuleFn "MODOLD A2' renamed to '" ModuleFn "MODOLD A1'"
+Say "*** '" ModuleFn "MODULE A2' created from text deck(s)" Parm._Mod
+Say "***"
+Say "*** with attribs" Parm._Origin Parm._Strinit Parm._System Parm._Clear Parm._Map Parm._OS
+Say
+
+Return
+
+NoErrors:
+
+    Signal off Error
+    'SET CMSTYPE HT'
+    Arg(1)
+    $RC = RC
+    'SET CMSTYPE RT'
+    Signal on Error
+    RC = $RC
+    Drop $RC
+
+Return RC

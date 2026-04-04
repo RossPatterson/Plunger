@@ -1,0 +1,21 @@
+/* _FIXSRC - Fix source that has been uploaded to A. */
+Signal on Error
+
+/* Find the source files and make them Fixed 80. */
+'LISTFILE * * A (EXEC FMODE'
+'EXECIO * DISKR CMS EXEC A (STEM FILES. FINIS'
+'ERASE CMS EXEC A'
+Do I = 1 to Files.0
+    Parse var Files.I . . Fn Ft Fm .
+    If Fn = 'MEMO' then Iterate
+    If WordPos(Ft, 'ASSEMBLE AUXHRC COPY MACRO') > 0 | ,
+        Left(Ft, 3) = 'HRC' then ,
+            'COPY' Fn Ft Fm '= = A (OLDDATE RECFM F LRECL 80 REPLACE'
+End
+
+Exit 0
+
+
+Error:
+Say 'Error' RC 'in line' SigL':' SourceLine(SigL)
+Exit RC

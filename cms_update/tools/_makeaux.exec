@@ -1,0 +1,60 @@
+/* _MAKEAUX - Make AUXHRC files for updates. */
+Parse arg UpdateDesc
+Signal on Error
+
+Call NoErrors 'ERASE * AUXHRC A'
+Call NoErrors 'ERASE * AUXTMP A'
+
+Call NoErrors 'LISTFILE * HRC* A (EXEC FTYPE'
+RC1 = RC
+Call NoErrors 'LISTFILE * RAP* A (APPEND FTYPE'
+If RC1 = 28 & RC = 28 then Signal ExitOK /* No update files, nothing to do. */
+
+Files.0 = 0
+'EXECIO * DISKR CMS EXEC A (STEM FILES. FINIS'
+'ERASE CMS EXEC A'
+Processed. = 0
+Processed.MEMO = 1
+/* Start with the update files from this package. */
+Do I = 1 to Files.0
+    Parse var Files.I . . Fn Ft .
+    If Processed.Fn then Iterate
+    'EXECIO 1 DISKW' Fn 'AUXTMP A 1 F 80 (FINIS STRING' Left(Ft UpdateDesc, 80)
+    Processed.Fn = 1
+End
+Drop Files.
+
+/* Now append any existing AUXHRC files to them. */
+Call NoErrors 'LISTFILE * AUXTMP A (EXEC FNAME'
+Files.0 = 0
+Call NoErrors 'EXECIO * DISKR CMS EXEC A (STEM FILES. FINIS'
+Call NoErrors 'ERASE CMS EXEC A'
+Do I = 1 to Files.0
+    Parse var Files.I . . Fn .
+    If NoErrors('STATE' Fn 'AUXHRC *') = 28 then Iterate
+    'COPY' Fn 'AUXHRC A = AUXTMP A (APPEND'
+End
+Drop Files.
+Call NoErrors 'RENAME * AUXTMP A = AUXHRC ='
+
+ExitOK:
+Exit 0
+
+
+Error:
+Say 'Error' RC 'in line' SigL':' SourceLine(SigL)
+Exit RC
+
+
+NoErrors:
+
+    Signal off Error
+    'SET CMSTYPE HT'
+    Arg(1)
+    $RC = RC
+    'SET CMSTYPE RT'
+    Signal on Error
+    RC = $RC
+    Drop $RC
+
+Return RC

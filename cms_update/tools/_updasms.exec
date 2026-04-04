@@ -1,0 +1,66 @@
+/* _UPDASMS - Merge _ASMALL EXEC B with newly-added and newly-updated ASSEMBLE files. */
+Signal On Error
+Arg OutFn OutFt OutFm .
+
+Seen. = 0
+OutCount = 0
+
+/* Start with any updated ASSEMBLE files we've staged. */
+Lines.0 = 0
+Call NoErrors 'EXECIO * DISKR' OutFn OutFt 'B (FINIS STEM Lines.'
+Do I = 1 to Lines.0
+    If Left(Strip(Lines.I, 'L'), 1) = '*' then Iterate
+    Parse var Lines.I . . Fn .
+    If Seen.Fn then Iterate
+    OutCount = OutCount + 1; OutLines.OutCount = Left(Lines.I, 80)
+    Seen.Fn = 1
+End
+
+/* Add any new ASSEMBLE files. */
+Call NoErrors 'LISTFILE * ASSEMBLE  A ( FTYPE EXEC'
+Lines.0 = 0
+Call NoErrors 'EXECIO * DISKR CMS EXEC A (FINIS STEM LINES.'
+Call NoErrors 'ERASE CMS EXEC A'
+Do I = 1 to Lines.0
+    Parse var Lines.I . . Fn .
+    If Seen.Fn then Iterate
+    OutCount = OutCount + 1; OutLines.OutCount = Left('&1 &2' Fn '&3 &4 &5 &6 &7 &8 &9 &10 &11 &12 &13 &14 &15', 80)
+    Seen.Fn = 1
+End
+
+/* Add any newly-updated ASSEMBLE filess. */
+Call NoErrors 'LISTFILE * HRC*  A ( FTYPE EXEC'
+Call NoErrors 'LISTFILE * RAP*  A ( FTYPE APPEND'
+Lines.0 = 0
+Call NoErrors 'EXECIO * DISKR CMS EXEC A (FINIS STEM LINES.'
+Do I = 1 to Lines.0
+    Parse var Lines.I . . Fn .
+    If NoErrors('STATE' Fn 'ASSEMBLE *') = 28 then Iterate
+    OutCount = OutCount + 1; OutLines.OutCount = Left(' &1 &2' Left(Fn, 8) '&3 &4 &5 &6 &7 &8 &9 &10 &11 &12 &13 &14 &15', 80)
+    Seen.Fn = 1
+End
+OutLines.0 = OutCount
+'EXECIO' OutLines.0 'DISKW' OutFn OutFt OutFm '1 F 80 ( FINIS STEM OUTLINES.'
+
+Call NoErrors 'ERASE CMS EXEC A'
+
+Exit 0
+
+
+Error:
+Say 'Error' RC 'in line' SigL':' SourceLine(SigL)
+Exit RC
+
+
+NoErrors:
+
+    Signal off Error
+    'SET CMSTYPE HT'
+    Arg(1)
+    $RC = RC
+    'SET CMSTYPE RT'
+    Signal on Error
+    RC = $RC
+    Drop $RC
+
+Return RC

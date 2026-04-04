@@ -1,0 +1,42 @@
+/* _GENMODS - Generate MODULES from CMS TEXT files. */
+Signal on Error
+
+/* Determine what MODULE files contain what TEXT files. */
+ModuleFn. = ''
+'EXECIO * DISKR _GENMODS DATA B (FINIS STEM LINES.'
+Do I = 1 to Lines.0
+    If Left(Strip(Lines.I, 'L'), 1) = '*' then Iterate
+    Parse var Lines.I SourceFn ModuleFn .
+    ModuleFn.SourceFn = ModuleFn
+End
+
+/* Rebuild all the MODULEs that contain (re-)built TEXT files. */
+Lines.0 = 0
+Call NoErrors 'EXECIO * DISKR _ASMALL EXEC B (FINIS STEM LINES.'
+Do I = 1 to Lines.0
+    If Left(Strip(Lines.I, 'L'), 1) = '*' then Iterate
+    Parse var Lines.I . . Fn .
+    If ModuleFn.Fn = '' then Iterate
+    'HRCGEND' ModuleFn.Fn
+End
+
+Exit 0
+
+
+Error:
+Say 'Error' RC 'in line' SigL':' SourceLine(SigL)
+Exit RC
+
+
+NoErrors:
+
+    Signal off Error
+    'SET CMSTYPE HT'
+    Arg(1)
+    $RC = RC
+    'SET CMSTYPE RT'
+    Signal on Error
+    RC = $RC
+    Drop $RC
+
+Return RC

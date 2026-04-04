@@ -1,0 +1,76 @@
+/* _UPDLL - Merge the CMSLOAD EXEC load list with newly-added and newly-updated ASSEMBLE files. */
+Signal On Error
+Arg AsmFn AsmFt AsmFm LoadListFn LoadListFt LoadListFm .
+
+/* TODO: Can we really just assume that an ASSEMBLE file that isn't in _GENMODS DATA goes at the end of the nucleus? */
+
+OutCount = 0
+
+/* Determine what TEXT files are not part of the nucleus. */
+IsModule. = 0
+'EXECIO * DISKR _GENMODS DATA B (FINIS STEM GENMODDATA.'
+Do I = 1 to GenmodData.0
+    If Left(Strip(GenmodData.I, 'L'), 1) = '*' then Iterate
+    Parse var GenmodData.I SourceFn .
+    IsModule.SourceFn = 1
+End
+
+AlreadyInNuc. = 0
+/* Read in the existing CMSLOAD EXEC. */
+'EXECIO * DISKR' LoadListFn LoadListFt 'A (FINIS STEM LOADLIST.'
+Do I = 1 to LoadList.0
+    If SubWord(LoadList.I, 1, 2) = '******** DMSOME' then InsertAfter = I - 1
+    If Left(Strip(LoadList.I, 'L'), 1) = '*' then Iterate
+    Parse var LoadList.I . . . Fn .
+    AlreadyInNuc.Fn = 1
+End
+
+say 'Insertion point is after line' InsertAfter':' LoadList.InsertAfter
+/* Add any new ASSEMBLE files. */
+Asms.0 = 0
+Call NoErrors 'EXECIO * DISKR' AsmFn AsmFt AsmFm '(FINIS STEM ASMS.'
+Do I = Asms.0 to 1 by -1
+    If Left(Strip(Asms.I, 'L'), 1) = '*' then Iterate
+    Parse var Asms.I . . Fn .
+    If IsModule.Fn then Iterate
+    If AlreadyInNuc.Fn then Iterate
+    Call AddModule Fn, InsertAfter
+    AlreadyInNuc.Fn = 1
+End
+
+/* Write out the updated CMSLOAD EXEC. */
+'EXECIO' LoadList.0 'DISKW' LoadListFn LoadListFt LoadListFm '1 F 80 ( FINIS STEM LOADLIST.'
+
+Exit 0
+
+
+Error:
+Say 'Error' RC 'in line' SigL':' SourceLine(SigL)
+Exit RC
+
+
+AddModule: Procedure expose LoadList.
+Arg Fn, InsertAfter
+
+Do I = LoadList.0 to InsertAfter by -1
+    J = I + 1
+    LoadList.J = LoadList.I
+End
+LoadList.InsertAfter = Left('&1 &2 &3' Fn, 80)
+LoadList.0 = LoadList.0 + 1
+
+Return
+
+
+NoErrors:
+
+    Signal off Error
+    'SET CMSTYPE HT'
+    Arg(1)
+    $RC = RC
+    'SET CMSTYPE RT'
+    Signal on Error
+    RC = $RC
+    Drop $RC
+
+Return RC

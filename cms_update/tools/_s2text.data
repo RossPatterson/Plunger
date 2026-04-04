@@ -1,0 +1,40 @@
+DMSARD                      3705
+DMSARN                      3705
+DMSARX                      3705
+DMSBAB                      DOS
+DMSBOP                      DOS
+DMSCLS                      DOS
+DMSDLB                      DOS
+DMSDLK                      DOS
+DMSDMP                      DOS
+DMSDOS                      DOS
+DMSDSL                      DOS
+DMSDSV                      DOS
+DMSFCH                      DOS
+DMSFET                      DOS
+DMSGRN                      3705
+DMSITP                      DOS
+DMSNCP                      3705
+DMSN33                      Table of AMS non-shared modules
+DMSOPL                      DOS
+DMSOPT                      DOS
+DMSOR1                      DOS
+DMSOR2                      DOS
+DMSOR3                      DOS
+DMSPRV                      DOS
+DMSREA                      part of CPEREP command
+DMSRRV                      DOS
+DMSS33                      VSAM AMS
+DMSSEG                      CMS segment addresses
+DMSSLN                      OS simulation
+DMSSRV                      DOS
+DMSS33                      table of AMS shared modules
+DMSVAN                      VSAM AMS
+DMSVAS                      VSAM AMS
+DMSVIB                      VSAM
+DMSVIP                      VSAM
+DMSVPD                      DOS
+DMSVVN                      DOS
+DMSVVS                      DOS
+DMSV33                      VSAM
+DMSXCP                      DOS

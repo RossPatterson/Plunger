@@ -1,0 +1,44 @@
+/* _RNMTXTS - Rename TEXT files to filemode 1 or 2 depending on the mode-2 list. */
+
+Signal on Error
+
+IsS2File. = 0
+Lines.0 = 0
+'EXECIO * DISKR _S2TEXT DATA B (FINIS STEM LINES.'
+Do I = 1 to Lines.I
+    Parse var Lines.I Fn .
+    IsS2File.Fn = 1
+End
+
+Call NoErrors 'RENAME * TEXT A = = A5'
+Call NoErrors 'LISTFILE * TEXT  A ( FTYPE EXEC'
+Lines.0 = 0
+Call NoErrors 'EXECIO * DISKR CMS EXEC A (FINIS STEM LINES.'
+Call NoErrors 'ERASE CMS EXEC A'
+Do I = 1 to Lines.0
+    Parse var Lines.I . . Fn Ft .
+    If IsS2File.Fn then OutFm = 'A2'
+    Else OutFm = 'A1'
+    'RENAME' Fn Ft 'A = =' OutFm
+End
+
+Exit 0
+
+
+Error:
+Say 'Error' RC 'in line' SigL':' SourceLine(SigL)
+Exit RC
+
+
+NoErrors:
+
+    Signal off Error
+    'SET CMSTYPE HT'
+    Arg(1)
+    $RC = RC
+    'SET CMSTYPE RT'
+    Signal on Error
+    RC = $RC
+    Drop $RC
+
+Return RC

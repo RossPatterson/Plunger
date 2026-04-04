@@ -1,0 +1,228 @@
+name: Build Plunger
+
+on: [push]
+
+jobs:
+
+#**************************************************#
+  update_cms:
+    name: Update CMS
+    runs-on: [ubuntu-latest]
+    container: rosspatterson/vm370:builder
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+          sparse-checkout: cms_update
+
+      - name: Start Hercules
+        working-directory: /opt/hercules/vm370
+        run: |
+          mkdir -p /opt/hercules/vm370/io
+          chmod -R ugo+rw /opt/hercules/vm370/*
+          . /opt/hercules/vm370/setup.sh
+          hercules -f hercules.conf -d >/dev/null 2>/dev/null &
+
+      - name: Update CMS
+        run: |
+          chmod +x cms_update/*.rexx
+          echo "Running update_cms.rexx"
+          rexx ./cms_update/update_cms.rexx
+        shell: bash
+
+      - name: Prepare DASD files
+        run: |
+          herccontrol "detach 6a1" -w "HHCCF047I"
+          herccontrol "detach 6a2" -w "HHCCF047I"
+          herccontrol "detach 6a3" -w "HHCCF047I"
+          herccontrol "detach 6a4" -w "HHCCF047I"
+        shell: bash
+
+      - name: Collect DASD files
+        run: |
+          mkdir -p ~/build_work/dasd
+          cp /opt/hercules/vm370/vm50-1.cckd ~/build_work/dasd
+          cp /opt/hercules/vm370/vm50-2.cckd ~/build_work/dasd
+          cp /opt/hercules/vm370/vm50-3.cckd ~/build_work/dasd
+          cp /opt/hercules/vm370/vm50-4.cckd ~/build_work/dasd
+          # The rest don't have MAINT mdisks or system-use space.
+          chmod -R ugo+r ~/build_work/dasd
+        shell: bash
+  
+      - name: Upload DASD files
+        uses: actions/upload-artifact@v7
+        with:
+          name: DASD
+          path: ~/build_work/dasd
+
+  build:
+    name: Build Plunger
+    needs: [update_cms]
+    runs-on: [ubuntu-latest]
+    container: rosspatterson/vm370:builder
+    outputs:
+      BUILD_DATE:     ${{ steps.build.outputs.BUILD_DATE     }}
+      BUILD_TIME:     ${{ steps.build.outputs.BUILD_TIME     }}
+      VERSION_STRING: ${{ steps.build.outputs.VERSION_STRING }}
+    steps:
+      - name: Get DASD files
+        uses: actions/download-artifact@v8
+        with:
+          name: DASD
+          path: ~/build_work/download
+
+      - name: Update DASD files
+        run: |
+          cd ~/build_work/download
+          mkdir -p /opt/hercules/vm370/io
+          mv *.cckd /opt/hercules/vm370/
+        shell: bash
+
+      - name: Checkout source
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - name: Move source
+        run: |
+          mkdir -p ~/build_work/repo
+          mv * ~/build_work/repo
+        shell: bash
+
+      - name: Start Hercules
+        working-directory: /opt/hercules/vm370
+        run: |
+          mkdir -p /opt/hercules/vm370/io
+          chmod -R ugo+rw /opt/hercules/vm370/*
+          . /opt/hercules/vm370/setup.sh
+          hercules -f hercules.conf -d >/dev/null 2>/dev/null &
+
+      - name: Build
+        id: build
+        run: |
+          cd ~/build_work/repo
+          chmod +x build.sh mkdoc.sh fixdoc/fixdoc.py
+          echo "Running build.sh"
+          ./build.sh
+        shell: bash
+
+      - name: Get package files
+        run: |
+          mkdir -p ~/build_work/upload
+          mv /opt/hercules/vm370/io/plunger.vmarc ~/build_work/upload
+          chmod -R ugo+r ~/build_work/upload
+        shell: bash
+
+      - name: Upload package
+        uses: actions/upload-artifact@v7
+        with:
+          name: Plunger
+          path: ~/build_work/upload
+
+#**************************************************#
+  test:
+    name: Test Plunger
+    needs: [update_cms, build]
+    runs-on: [ubuntu-latest]
+    container: rosspatterson/vm370:builder
+    steps:
+      - name: Get DASD files
+        uses: actions/download-artifact@v8
+        with:
+          name: DASD
+          path: ~/build_work/download
+
+      - name: Update DASD files
+        run: |
+          cd ~/build_work/download
+          mkdir -p /opt/hercules/vm370/io
+          mv *.cckd /opt/hercules/vm370/
+        shell: bash
+
+      - name: Checkout source
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+          sparse-checkout: cms_update
+
+      - name: Make dirs
+        run: |
+          mkdir -p ~/build_work/download
+        shell: bash
+
+      - name: Move Source
+        run: |
+          mkdir -p ~/build_work/repo
+          mv * ~/build_work/repo
+        shell: bash
+
+      - name: Get package
+        uses: actions/download-artifact@v8
+        with:
+          name: Plunger
+          path: ~/build_work/downloads
+
+      - name: Start Hercules
+        working-directory: /opt/hercules/vm370
+        run: |
+          mkdir -p /opt/hercules/vm370/io
+          chmod -R ugo+rw /opt/hercules/vm370/*
+          . /opt/hercules/vm370/setup.sh
+          hercules -f hercules.conf -d >/dev/null 2>/dev/null &
+
+      - name: Test
+        working-directory: /opt/hercules/vm370
+        env:
+          BUILD_DATE: ${{needs.build.outputs.BUILD_DATE}}
+          BUILD_TIME: ${{needs.build.outputs.BUILD_TIME}}
+          VERSION_STRING: ${{needs.build.outputs.VERSION_STRING}}
+        run: |
+          chmod -R ugo+rw *
+          . /opt/hercules/vm370/setup.sh
+          hercules -f hercules.conf -d >/dev/null 2>/dev/null &
+          cd ~/build_work/repo
+          vma -x -c -m0 -t ~/build_work/download/plunger.vmarc TEST SH
+          chmod +x test.sh
+          echo "Running test.sh"
+          ./test.sh "$VERSION_STRING" "$BUILD_DATE" "$BUILD_TIME"
+        shell: bash
+
+#**************************************************#
+  release:
+    if: startsWith(github.ref, 'refs/tags/')
+    name: Release
+    needs: [update_cms, build, test]
+    runs-on: [ubuntu-latest]
+    steps:
+      - name: Get package
+        uses: actions/download-artifact@v8
+        with:
+          name: Plunger
+          path: ~/build_work/download
+
+      - name: ZIP package
+        run:
+          zip -r Plunger.zip Plunger
+
+      - name: Create release
+        id: create_release
+        uses: actions/create-release@v1.0.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: Release ${{ github.ref }}
+          draft: true
+          prerelease: true
+
+      - name: Upload release asset
+        id: upload-release-asset
+        uses: actions/upload-release-asset@v1.0.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ~/build_work/download/Plunger.zip
+          asset_name: Plunger.zip
+          asset_content_type: application/zip
