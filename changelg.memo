@@ -1,4 +1,10 @@
+I0005 - Uplevel RexxUnit.
 I0006 - Write README.md for GitHub and PLUNGER MEMO for CMS.
+*
+* Changes labeled "Cnnnn" below here were built on CMS and only added to
+* git when each was complete, so the history may be a little odd.  See
+* issues.memo for details of each one.
+*
 C0027 - REXX works.
 C0026 - Error 58 running "TRD": File not found
 C0025 - DMSEXT072E Error in EXEC file TRD, line 0 - File not found.
