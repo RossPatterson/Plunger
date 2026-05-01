@@ -25,6 +25,13 @@ TestTeardown:
    If RC = 0 then Call NoError 'NUCXDROP PLUNGER'
    Return
 
+TestCommand:
+   Parse upper source . . MyFn MyFt .
+   'PIPE command LISTFILE' MyFn MyFt '| stem Out.'
+   Call AssertStartsWith Left(MyFn,8) Left(MyFt,8) 'A', Value('Out.1')
+   Call AssertEqual 1, Out.0
+   Return
+
 TestConsoleInput:
    Msg.0 = 2
    Msg.1 = 'Now is the winter of our discontent'
@@ -46,7 +53,7 @@ TestConsoleOutput:
 
 TestCms:
    Parse upper source . . MyFn MyFt .
-   'PIPE cms LISTFILE' MyFn MyFt '| stem Out.'
+   'PIPE cms listfile' MyFn MyFt '| stem Out.'
    Call AssertStartsWith Left(MyFn,8) Left(MyFt,8) 'A', Value('Out.1')
    Call AssertEqual 1, Out.0
    Return
@@ -57,10 +64,34 @@ TestCp:
    Call AssertStemIdentical 'Ref.', 'Out.'
    Return
 
-TestDiskRead:
+TestDiskFastRead:
+   Driver = 'diskfast'
+   Signal DoDiskRead
+
+TestDiskSlowRead:
+   Driver = 'diskslow'
+   Signal DoDiskRead
+
+TestMDiskFastRead:
+   Driver = 'mdskfast'
+   Signal DoDiskRead
+
+TestMDiskSlowRead:
+   Driver = 'mdskslow'
+   Signal DoDiskRead
+
+TestNoseMDiskRead:
+   Driver = '<mdsk'
+   Signal DoDiskRead
+
+TestNoseRead:
+   Driver = '<'
+   Signal DoDiskRead
+
+DoDiskRead:
    Parse source . . MyFn .
    MySize = SourceLine()
-   'PIPE <' MyFn 'EXEC A |stem Out.'
+   'PIPE' Driver MyFn 'EXEC A |stem Out.'
    Call AssertEqual MySize, Out.0
    Do I = 1 to Out.0
       Source = SourceLine(I)
@@ -70,14 +101,94 @@ TestDiskRead:
    End
    Return
 
-TestDiskAppend:
+TestDiskReadBack:
+   Driver = 'diskback'
+   Signal DoDiskReadBack
+
+TestMDiskReadBack:
+   Driver = 'mdskback'
+   Signal DoDiskReadBack
+
+DoDiskReadBack:
+   Parse source . . MyFn .
+   MySize = SourceLine()
+   'PIPE' Driver MyFn 'EXEC A |stem Out.'
+   Call AssertEqual MySize, Out.0
+   Do I = 1 to Out.0
+      J = (Out.0 - I) + 1
+      Source = SourceLine(J)
+      /* CMS files can't have empty records, so REXXUNIT pads them to " " */
+      If Source == '' then Source = ' '
+      Call AssertIdentical Source, Out.I, 'Source line #' || J
+   End
+   Return
+
+TestDiskReadRandom:
+   Driver = 'diskrandom'
+   Signal DoDiskReadRandom
+
+TestMDiskReadRandom:
+   Driver = 'mdskrandom'
+   Signal DoDiskReadRandom
+
+DoDiskReadRandom:
+   Parse source . . MyFn .
+   MySize = SourceLine()
+   Ref. = ''
+   Ref.0 = Random(1, 20)
+   RecordList = ''
+   Do I = 1 to Ref.0
+      RecNum = Random(1, MySize)
+      RecordList = RecordList RecNum
+      Source = SourceLine(RecNum)
+      /* CMS files can't have empty records, so REXXUNIT pads them to " " */
+      If Source == '' then Source = ' '
+      Ref.I = Source
+   End
+   'PIPE literal' RecordList '|' Driver MyFn 'EXEC A | stem Out.'
+   Call AssertStemIdentical 'Ref.', 'Out.'
+   Return
+
+TestDiskUpdate:
+   Driver = 'diskupdate'
+   Signal DoDiskUpdate
+
+TestMDiskUpdate:
+   Driver = 'mdskupdate'
+   Signal DoDiskUpdate
+
+DoDiskUpdate:
+   OutFile = 'TDU CMSUT1 A'
+   Call Erase OutFile
+   In.0 = 3
+   In.1 = 'Alas, poor Yorik.  I knew him, Laertes.'
+   In.2 = 'Now is the winter of our discontent'
+   In.3 = 'Made glorious summer by this son of York'
+   'EXECIO' In.0 'DISKW' OutFile '(FINIS STEM IN.'
+   'PIPE literal 1         Alas, poor Yorik.  I knew him, Horatio.|' Driver OutFile
+   'EXECIO * DISKR' OutFile '(STEM OUT.'
+   Call Erase OutFile
+   In.1 = ChangeStr('Laertes', In.1, 'Horatio')
+   Call AssertStemIdentical 'In.', 'Out.'
+   Return
+
+TestNoseWriteAppend:
+   Driver = '>>'
+   Signal DoDiskWriteAppend
+
+TestNoseMDiskWriteAppend:
+   Driver = '>>mdsk'
+   Signal DoDiskWriteAppend
+
+DoDiskWriteAppend:
    OutFile = 'TDWA CMSUT1 A'
+   Call Erase OutFile
    Line1 = 'Alas, poor Yorik.'
    'EXECIO 1 DISKW' OutFile '(FINIS STRING' Line1
    In.0 = 2
    In.1 = 'Now is the winter of our discontent'
    In.2 = 'Made glorious summer by this son of York'
-   'PIPE stem In. | >>' OutFile
+   'PIPE stem In. |' Driver OutFile
    'EXECIO * DISKR' OutFile '(STEM OUT.'
    Call Erase OutFile
    Call AssertEqual In.0 + 1, Out.0
@@ -88,38 +199,44 @@ TestDiskAppend:
    End
    Return
 
-TestDiskWriteNew:
+TestNoseMDiskWriteNew:
+   Driver = '>mdsk'
+   Signal DoDiskWriteNew
+
+TestNoseWriteNew:
+   Driver = '>'
+   Signal DoDiskWriteNew
+
+DoDiskWriteNew:
    OutFile = 'TDWN CMSUT1 A'
    Call Erase OutFile
    In.0 = 2
    In.1 = 'Now is the winter of our discontent'
    In.2 = 'Made glorious summer by this son of York'
-   'PIPE stem In. | >' OutFile
+   'PIPE stem In. |' Driver OutFile
    'EXECIO * DISKR' OutFile '(STEM OUT.'
    Call Erase OutFile
    Call AssertStemIdentical 'In.', 'Out.'
    Return
 
-TestDiskWriteReplace:
+TestNoseMDiskWriteReplace:
+   Driver = '>mdsk'
+   Signal DoDiskWriteReplace
+
+TestNoseWriteReplace:
+   Driver = '>'
+   Signal DoDiskWriteReplace
+
+DoDiskWriteReplace:
    OutFile = 'TDWR CMSUT1 A'
    'EXECIO 1 DISKW' OutFile '(FINIS STRING Output from EXECIO'
    In.0 = 2
    In.1 = 'Now is the winter of our discontent'
    In.2 = 'Made glorious summer by this son of York'
-   'PIPE stem In. | >' OutFile
+   'PIPE stem In. |' Driver OutFile
    'EXECIO * DISKR' OutFile '(STEM OUT.'
    Call Erase OutFile
    Call AssertStemIdentical 'In.', 'Out.'
-   Return
-
-TestEmsgOn:
-   Msg = 'ABCDEF001I This is only a test.'
-   OldEMsg = SaveSetEmsg()
-   'SET EMSG ON'
-   'WITHSTEM OUTPUT O. COMMAND PIPE literal' Msg || '| emsg'
-   'SET EMSG' OldEMsg
-   Call AssertEqual 1, O.0
-   Call AssertIdentical Msg, O.1
    Return
 
 TestEmsgCode:
@@ -146,6 +263,16 @@ TestEmsgOff:
    Msg = 'ABCDEF001I This is only a test.'
    OldEMsg = SaveSetEmsg()
    'SET EMSG OFF'
+   'WITHSTEM OUTPUT O. COMMAND PIPE literal' Msg || '| emsg'
+   'SET EMSG' OldEMsg
+   Call AssertEqual 1, O.0
+   Call AssertIdentical Msg, O.1
+   Return
+
+TestEmsgOn:
+   Msg = 'ABCDEF001I This is only a test.'
+   OldEMsg = SaveSetEmsg()
+   'SET EMSG ON'
    'WITHSTEM OUTPUT O. COMMAND PIPE literal' Msg || '| emsg'
    'SET EMSG' OldEMsg
    Call AssertEqual 1, O.0
@@ -190,6 +317,66 @@ TestPdsdirect:
    Call AssertIdentical "DMSLIB", Left(Out.1, 6)
    Call AssertIdentical "MSGP    ", Left(Out.2, 8)
    Call AssertIdentical "DMMMAC", Left(Out.3, 6)
+   Return
+
+TestPrintMC:
+   Driver = 'printmc'
+   Signal DoPrint
+
+TestURO:
+   Driver = 'uro'
+   Signal DoPrint
+
+DoPrint:
+   OutFile = 'TURO DATA A'
+   Call Erase OutFile
+   In.0 = 3
+   In.1 = '1Alas, poor Yorik.  I knew him, Horatio.'
+   In.2 = '+Now is the winter of our discontent'
+   In.3 = '0Made glorious summer by this son of York'
+   'CP SPOOL PRINTER TO * CLASS Q'
+   'CP DISCARD PURGE READER CLASS Q'
+   'PIPE stem In. | asatomc |' driver
+   'CP CLOSE PRINTER'
+   'CP SPOOL READER CLASS Q'
+   'PIPE reader | mctoasa | stem Out.'
+   Call Erase OutFile
+   Call AssertStemIdentical 'In.', 'Out.'
+   Return
+
+TestPunch:
+   OutFile = 'TP DATA A'
+   Call Erase OutFile
+   In.0 = 3
+   In.1 = Left('Alas, poor Yorik.  I knew him, Horatio.', 80)
+   In.2 = Left('Now is the winter of our discontent', 80)
+   In.3 = Left('Made glorious summer by this son of York', 80)
+   'CP SPOOL PUNCH TO * CLASS Q'
+   'CP DISCARD PURGE PUNCH CLASS Q'
+   'PIPE stem In. | punch'
+   'CP CLOSE PUNCH'
+   'CP SPOOL READER CLASS Q'
+   'READCARD' OutFile
+   'EXECIO * DISKR' OutFile '(FINIS STEM OUT.'
+   Call Erase OutFile
+   Call AssertStemIdentical 'In.', 'Out.'
+   Return
+
+TestReader:
+   OutFile = 'TR DATA A'
+   Call Erase OutFile
+   In.0 = 3
+   In.1 = Left('Alas, poor Yorik.  I knew him, Horatio.', 80)
+   In.2 = Left('Now is the winter of our discontent', 80)
+   In.3 = Left('Made glorious summer by this son of York', 80)
+   'CP SPOOL PUNCH TO * CLASS Q'
+   'CP DISCARD PURGE READER CLASS Q'
+   'EXECIO' In.0 'PUNCH (STEM IN.'
+   'CP CLOSE PUNCH'
+   'CP SPOOL READER CLASS Q'
+   'PIPE reader | strfind x41 | spec 2-* 1.80 | stem Out.'
+   Call Erase OutFile
+   Call AssertStemIdentical 'In.', 'Out.'
    Return
 
 TestRexxDisk:
@@ -268,6 +455,34 @@ TestStackOutput:
    Call AssertIdentical Msg2, Out2
    Return
 
+TestState:
+   Call Erase 'TS DATA A'
+   'EXECIO 1 DISKW TS DATA A (FINIS STRING blah blah blah'
+   'LISTFILE TS DATA A (NOHEADER LIFO ALLOC'
+   Parse pull Ref
+   'PIPE state ts data a | stem Out.'
+   Call Erase 'TS DATA A'
+   Call AssertEqual 1, Out.0
+   /* Don't check the date and time, because LISTFILE and PIPE STATE format
+      them differently.
+   */
+   Call AssertEqual Space(Ref), Space(SubWord(Out.1, 1, Words(Out.1)-2))
+   Return
+
+TestStateW:
+   Call Erase 'TSW DATA A'
+   'EXECIO 1 DISKW TSW DATA A (FINIS STRING blah blah blah'
+   'LISTFILE TSW DATA A (NOHEADER LIFO ALLOC'
+   Parse pull Ref
+   'PIPE state tsw data a | stem Out.'
+   Call Erase 'TSW DATA A'
+   Call AssertEqual 1, Out.0
+   /* Don't check the date and time, because LISTFILE and PIPE STATE format
+      them differently.
+   */
+   Call AssertEqual Space(Ref), Space(SubWord(Out.1, 1, Words(Out.1)-2))
+   Return
+
 TestStem:
    'PIPE literal Hello stem1!|literal Hello stem2!|stem Out.'
    Call AssertEqual 2, Out.0
@@ -313,8 +528,26 @@ TestVar:
    Call AssertIdentical 'some text ', X
    Return
 
+TestVarDrop:
+   x = 'Once upon a time, in the Black Forest, a little tin soldier stood.'
+   'PIPE literal X | vardrop'
+   Call AssertEqual 'LIT', Symbol('X')
+   Return
+
+TestVarFetch:
+   In = 'Once upon a time, in the Black Forest, a little tin soldier stood.'
+   'PIPE literal IN| varfetch | var OUT'
+   Call AssertIdentical In, Out
+   Return
+
 TestVarload:
    'PIPE literal /VAR1/var1 text|literal /VAR2/var2 text| varload'
+   Call AssertIdentical 'var1 text', var1
+   Call AssertIdentical 'var2 text', var2
+   Return
+
+TestVarSet:
+   'PIPE literal /VAR1/var1 text|literal /VAR2/var2 text| varset'
    Call AssertIdentical 'var1 text', var1
    Call AssertIdentical 'var2 text', var2
    Return
@@ -324,7 +557,7 @@ TestXrange:
    Call AssertIdentical XRange('00'x, 'ff'x), Out
    Return
 
-Erase:
+Erase: Procedure expose $RXU.
    'SET CMSTYPE HT'
    Call NoError 'ERASE' Arg(1)
    'SET CMSTYPE RT'

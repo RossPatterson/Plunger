@@ -17,10 +17,16 @@ See [Licenses](#licenses) below for more information.
 * [Pre-requisites](#pre-requisites)
 * [Installation](#installation)
 * [Use](#use)
-* [Notes](#notes)
-* [Plunger code](#plunger-code)
 * [Plunger command](#plunger-command)
+* [Notes](#notes)
+  * [Pipelines documentation](#pipelines-documentation)
+  * [Pipelines HELP](#pipelines-help)
+  * [Compatibility](#compatibility)
+  * [Unsupported stages](#unsupported-stages)
+* [Plunger code](#plunger-code)
 * [Licenses](#licenses)
+  * [CMS Pipelines Runtime Library Distribution license](#cms-pipelines-runtime-library-distribution-license)
+  * [Plunger license](#plunger-license)
 
 ## Overview
 
@@ -95,6 +101,14 @@ documentation.
 1. Optionally build and deploy the _CMS Pipelines_ HELP files.  See the
 [Pipelines HELP note](#pipelines-help) for the process to do so.
 
+1. Optionally rebuild `PLUNGER MODULE` from source:
+   ```
+   VMARC UNPACK PLUNGER VMARC fm * * fm (OLDDATE
+   MKPLUNGE DEBUG
+   * or
+   MKPLUNGE NODEBUG
+   ```
+
 ## Use
 
 After installation, it is easy to use CMS Pipelines.  Issue the `PLUNGER
@@ -102,10 +116,35 @@ ENABLE` command to load Plunger and Pipelines into memory, and then issue
 `PIPE` commands exactly like the Pipelines documentation says.  To unload
 Plunger and Pipelines, issue the `PLUNGER DISABLE` command.
 
+For example:
+
+```
+plunger enable
+Ready;
+pipe literal Hello World! | console
+Hello World!
+Ready;
+```
 Plunger is relatively small - about 12KB in memory.  Pipelines is not - it
 consumes 1.1MB when loaded.  There are no options to reduce either of these,
 so you may need to increase the storage size of some of your CMS virtual
 machines to use Pipelines.
+
+## `PLUNGER` command
+
+`PLUNGER MODULE` is a small self-loading nucleus extension.  It sets itself up
+in memory the first time a `PLUNGER` command is issued.
+
+* `PLUNGER DEBUG [ON|OFF]` - display and possibly change the debugging status.
+* `PLUNGER DISABLE` - disable all the services and unload _CMS Pipelines_ from
+memory.
+* `PLUNGER ENABLE` - enable all the services and load and initialize _CMS
+Pipelines_.
+* `PLUNGER VERSION` - display the version number and build date and time.
+
+`PLUNGER` also responds to `ABEND` and `NUCXDROP` situations via the `SERVICE`
+nucleus extension option.  When dropped via `NUCXDROP`, Plunger also drops
+Pipelines.
 
 ## Notes
 
@@ -207,6 +246,93 @@ where CMS users can access them (_e.g._, the CMS `MAINT 19D` HELP disk).
    ERASE PIPE     HELPTASK fm
    ```
 
+### Compatibility
+
+_Plunger_ assumes that Pipelines generally works correctly, and that only
+certain issues exist and need correction.  Those issues are almost entirely in
+the "system interface" portions of Pipelines - specifically, the _device
+driver_ stages, and other areas where Pipelines issues commands to the system
+environment (in this case, CMS or CP).  All of the _device driver_ stages have
+been tested, and either found to work fine, or issues have been logged and in
+almost all cases fixed.  In the process of testing the _device drivers_, no
+_filter_ stages were found to require support from _Plunger_, although no
+significant effort was made to test all _filter_ stages.
+
+The Plunger 0.0.n levels were focused on just getting Pipelines to work at all`
+in VM/370 CMS.  Plunger level 0.1.7 successfully demonstrated simple and
+multistream pipelines with only limited _device driver_ usage.  The 1.1.n
+levels which followed were focused on getting the most important _device
+drivers_ working - console, stack, and disk I/O, and on supporting stages
+written in Rexx (with bREXX release 1.2.0 providing much-needed Exec-in-Storage
+support).  The 0.2.n levels, which were developed after the 0.1.27 level was
+uploaded to GitHub, were focused on finishing testing and repair of the _device
+drivers_.  Plunger level 0.3.xxx completed that effort.
+
+The _Plunger_ automated tests are written in
+[RexxUnit](https://github.com/RossPatterson/RexxUnit), and a copy of the
+`REXXUNIT EXEC` driver is included in the source code.  To run them, simply
+install Plunger, with both the `REXXUNIT EXEC` and the `* REXXUNIT` files, and
+enter `REXXUNIT`.  See the
+[RexxUnit README](https://github.com/RossPatterson/RexxUnit/blob/main/README.md)
+for more information.
+
+### Unsupported stages
+
+In addition to stages that Pipelines does not intend to work on CMS (_e.g._,
+`<mvs`), the following stages are known not to work, and may never work, as
+they require support that VM/370 CE CMS and CP do not have:
+
+* `<OE`
+* `<SFS`
+* `>OE`
+* `>>SFS`
+* `>>OE`
+* `>>SFS`
+* `>>SFSSLOW`
+* `ACIGROUP`
+* `ADRSPACE`
+* `AFTFST`
+* `ALSERV`
+* `DATECONVERT`
+* `DEVINFO`
+* `DFSORT`
+* `DIAGE4`
+* `DISKID`
+* `FBAREAD`
+* `FBAWRITE`
+* `FILEDESCRIPTOR`
+* `FILETOKEN`
+* `HELP`
+* `IMMCMD`
+* `MAPMDISK`
+* `MDISKBLK`
+* `MDSKUPDATE`
+* `READER`
+* `SFSBACK`
+* `SFSDIRECTORY`
+* `SFSUPDATE`
+* `SQLCODES`
+* `SQLSELECT`
+* `STARMON`
+* `STARMSG`
+* `STARSYS`
+* `STATE`
+* `STFLE`
+* `STSI`
+* `TCPCLIENT`
+* `TCPDATA`
+* `TCPLISTEN`
+* `TRACKREAD`
+* `TRACKWRITE`
+* `TRFREAD`
+* `UDP`
+* `VARFETCH`
+* `VMC`
+* `WAITDEV`
+* `XAB`
+* `XEDIT`
+* `XMSG`
+
 ## _Plunger_ code
 
 _Plunger_ provides a collection of services that _CMS Pipelines_ requires and
@@ -255,28 +381,12 @@ list of ZAPs is:
 incorrect; found 00F8C158; display of ABEND information may be in jeopardy._"
 * `ZAP003` - Relocate `NUCMFLAG` in CMS `NUCON`.  See
 https://github.com/s390guy/vm370/issues/97 for details.
-* `ZAP004` - Set the "VM/SP" bit in the CO `DIAG x'0000'` response.
+* `ZAP004` - Set the "VM/SP" bit in the CP `DIAG x'0000'` response.
 * `ZAP005` - PIPELINE uses a filesystem workarea called `FVS`, but it expects a
 newer version than VM/370 CE's.
 * `ZAP006` - PIPELINE calls RENAME (NOUPDIR, but VM/370 R6 expects (NOUPDIRT.
 * `ZAP007` - Bypass DMSEXC when calling Rexx stages (pre-dates CMS update
 HRC100DS, and is not applied if HRC100DS is installed on CMS).
-
-## `PLUNGER` command
-
-`PLUNGER MODULE` is a small self-loading nucleus extension.  It sets itself up
-in memory the first time a `PLUNGER` command is issued.
-
-* `PLUNGER VERSION` - display the version number and build date and time.
-* `PLUNGER DEBUG [ON|OFF]` - display and possibly change the debugging status.
-* `PLUNGER ENABLE` - enable all the services and load and initialize _CMS
-Pipelines_.
-* `PLUNGER DISABLE` - disable all the services and unload _CMS Pipelines_ from
-memory.
-
-`PLUNGER` also responds to `ABEND` and `NUCXDROP` situations via the `SERVICE`
-nucleus extension option.  When dropped via `NUCXDROP`, Plunger also drops
-Pipelines.
 
 ## Licenses
 

@@ -205,6 +205,9 @@ jobs:
     name: Release
     needs: [update_cms, build, test]
     runs-on: [ubuntu-latest]
+    permissions:
+      packages: write
+      contents: write
     steps:
       - name: Get package
         uses: actions/download-artifact@v8

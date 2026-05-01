@@ -1,73 +1,21 @@
 /* CMS Pipelines missing tests */
 
-TestCommand:
-   Call Skip 'Not implemented'
+TestBrowse:
+   Call Skip "Works, but can't test automatically."
    Return
 
 TestFullscr:
-   Call Skip 'Seems to work, need to find some sample use cases.'
-   Return
-
-TestMaclib:
-   Call Skip 'Not implemented'
-   Return
-
-TestMdiskblkRead:
-   Call Skip 'MDISKBLK passes invalid plist to DMSDIOR.'
-   /*
-   'PIPE mdiskblk number read s 3 | stem Out.'
-   Call AssertEqual 1, Out.0
-   Call AssertIdentical '         3', Substr(Out.1, 1, 10)
-   Call AssertIdentical 'CMS=CMSDSK', Substr(Out.1, 10, 10)
-   */
-   Return
-
-TestMdiskblkWrite:
-   Call Skip 'MDISKBLK passes invalid plist to DMSDIOR.  EDF, maybe?'
-   Return
-
-TestPrintmc:
-   Call Skip 'Seems to work, need to figure out how to verify results.'
-   Return
-
-TestPunch:
-   Call Skip 'Seems to work, need to figure out how to verify results.'
-   Return
-
-TestReader:
-   Call Skip 'Not implemented'
-   Return
-
-TestRexxStream:
-   Call Skip 'Not ready yet.'
-   /*
-   'PIPE (end \) doit: rexx *.1:| stem Out.' ,
-               '\literal /* */ trace ?i ; "OUTPUT Hi from stream!"; Exit| doit:'
-   Ref.1 = 'Hi from stream!'
-   Ref.0 = 1
-   Call AssertStemIdentical 'Ref.', 'Out.'
-   */
-   Return
-
-TestRexxvars:
-   Call Skip 'bREXX does not support symbolic fetch operations'
-   /*
-   'PIPE rexxvars | console'
-   */
+   Call Skip "Works, but can't test automatically."
    Return
 
 TestTape:
-   Call Skip 'Not implemented'
-   Return
-
-TestUro:
-   Call Skip 'Not implemented'
+   Call Skip "Not implemented"
    Return
 
 TestVmc:
-   Call Skip 'SMART is not available.'
+   Call Skip "SMART is not available."
    Return
 
-TestXab:
-   Call Skip 'Not implemented'
+TestWaitDev:
+   Call Skip "Not implemented"
    Return

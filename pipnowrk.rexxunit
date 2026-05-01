@@ -1,0 +1,102 @@
+/* Unit tests for CMS Pipelines device drivers that don"t work in VM/370 CE CMS. */
+
+TestSetup:
+   /* Ensure WITHSTEM is available. */
+   Call NoError "NUCEXT WITHSTEM"
+   If RC <> 0 then "NUCXTEXT WITHSTEM (SYSTEM"
+
+   /* Don"t let the test leave anything in the stack. */
+   Call NoError "MAKEBUF"
+
+   /* Reset PLUNGER to clean state. */
+   Call NoError "NUCEXT PLUNGER"
+   If RC = 0 then Call NoError "NUCXDROP PLUNGER"
+   "PLUNGER ENABLE"
+   "PIPE literal x|hole"
+   Return
+
+TestTeardown:
+   /* Don"t let the test leave anything in the stack. */
+   "DROPBUF"
+
+   /* Reset to clean state. */
+   Call NoError "NUCXDROP WITHSTEM"
+   Call NoError "NUCEXT PLUNGER"
+   If RC = 0 then Call NoError "NUCXDROP PLUNGER"
+   Return
+
+TestAciGroup:
+    Call Skip "CP doesn't have Access Control Groups, can't test because causes PROG0006 CMS crash."
+
+TestAdrSpace:
+    Call Expect "ERROR", 154
+    "PIPE adrspace query xx | console"
+
+TestAlServ:
+    Call Expect "ERROR", 154
+    "PIPE literal x | alserv test | console"
+
+TestDiagE4:
+    Call Skip "CP doesn't have DIAG E4, can't test because causes PROG0006 CMS crash."
+
+TestDiskId:
+    Call Skip "CMS doesn't reserved file support."
+
+TestImmCmd:
+    Call Expect "ERROR", 303
+    "PIPE immcmd zz | console"
+
+TestMapMdisk:
+    Call Expect "ERROR", 154
+    "PIPE mapmdisk define | console"
+
+TestMdiskblkRead:
+   Call Skip "MDISKBLK passes invalid plist to DMSDIOR.  EDF, maybe?"
+   /*
+   "PIPE mdiskblk number read s 3 | stem Out."
+   Call AssertEqual 1, Out.0
+   Call AssertIdentical "         3", Substr(Out.1, 1, 10)
+   Call AssertIdentical "CMS=CMSDSK", Substr(Out.1, 10, 10)
+   */
+   Return
+
+TestMdiskblkWrite:
+   Call Skip "MDISKBLK passes invalid plist to DMSDIOR.  EDF, maybe?"
+   Return
+
+TestNoseOpenEditionRead:
+    Call Expect "ERROR", 685
+    "PIPE <oe profile.exec.a | console"
+
+TestRexxvars:
+   Call Skip "bREXX does not support the fetch-next operation"
+   /*
+   "PIPE rexxvars | console"
+   */
+   Return
+
+TestStarMon:
+    Call Expect "ERROR", 310
+    "PIPE starmon mondcss sample | console"
+
+TestStarMsg:
+    Call Expect "ERROR", 310
+    "PIPE starmsg | console"
+
+TestStarSys:
+    Call Expect "ERROR", 310
+    "PIPE starsys *account | console"
+
+TestXab:
+   Call Skip "CP doesn't have DIAG B4, can't test because causes PROG0006 CMS crash."
+   Return
+
+TestXedit:
+    Call Expect "ERROR", 141
+    "PIPE xedit profile exec a | console"
+   Return
+
+TestXMsg:
+    Call Expect "ERROR", 141
+    "PIPE literal hi mom | xmsg"
+   Return
