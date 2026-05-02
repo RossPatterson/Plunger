@@ -152,6 +152,10 @@ CMDENABL DS    0H
          B     PCMDEXIT       All done.
          SPACE 3
 ENABNPRM DS    0H
+         CLC   =A(0),ADMSCWR  Is our ADMSCWR mod applied?
+         BNE   *+8            Yes, WRTERM etc. is catchable.
+         BAL   R14,MSG026     No, warn the user.
+         SPACE 3
          MVI   NUCCFA,0       Let Pipelines figure out machine type.
          SPACE 3
          LA    R0,(PRMLEN+7)/8  Get storage for
@@ -385,6 +389,14 @@ MSG013   DS    0H
          BR    R14
          SPACE 3
 * MSG014 inline above
+         SPACE 3
+MSG026   DS    0H
+         LINEDIT TEXT='PLUCMD026W The field ADMSCWR in NUCON is not set*
+               . Pipelines may not be able to capture command output', *
+               DISP=ERRMSG,                                            *
+               MF=(E,WRKLEDPL)
+         SR    R15,R15
+         BR    R14
          LTORG ,
          POP   USING
          TITLE 'Permanent storage.'

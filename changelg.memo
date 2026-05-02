@@ -1,3 +1,4 @@
+      - Check ADMSCWR and warn if not set.
 I0003 - Make REXX stage work with stream programs.
         * Implemented some post-S/370 instructions (LAE, STAM) Rexx requires
           to read stage-programs from streams.

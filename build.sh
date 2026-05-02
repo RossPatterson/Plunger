@@ -54,7 +54,8 @@ herccontrol "/MKPLUNGE" -w "^Ready;"
 herccontrol "devinit 00d /opt/hercules/vm370/io/plunger.vmarc" -w "^HHCPN098I"
 sleep 5	# Because "devinit" is timing-related :-(
 # Later we'll be more explicit, for now just include everything.
-herccontrol "/VMARC PACK * * A (PUNCH NOTRACE" -w "^Ready;"
+herccontrol "/PKGFILES VMARC PACK PLUNGER VMARC A (APPEND NOTRACE" -w "^Ready;"
+herccontrol "/PUNCH PLUNGER VMARC A (NOHEADER" -w "^Ready;"
 herccontrol "devinit 00d dummy" -w "^HHCPN098I"
 sleep 5	# Because "devinit" is timing-related :-(
 # Remove the trailing lace card:

@@ -88,7 +88,7 @@ Call UploadAndUnpack UploadDir || '/rap016ds.vmarc', 'MAINT', 'BALR to TYPLIN th
 
 /* Now everything is unpacked to F and A is empty. */
 
-/* Reuild the CMSHRC macro library, move it to F and S, and then erase it from A. */
+/* Reuild the CMSHRC macro library, move it to F and S (as Z), and then erase it from A. */
 'herccontrol "/VMFMAC CMSHRC DMSHRC" -w "^Ready;"'
 'herccontrol "/ACCESS 093 F" -w "^Ready;"'
 'herccontrol "/COPY CMSHRC MACLIB A = = F  (OLDD REPLACE" -w "^Ready;"'
@@ -102,7 +102,7 @@ Call UploadAndUnpack UploadDir || '/rap016ds.vmarc', 'MAINT', 'BALR to TYPLIN th
 'herccontrol "/RELEASE Z" -w "^Ready;"'
 'herccontrol "/ERASE CMSHRC * A" -w "^Ready;"'
 
-/* Assemble all the modified source files and copy the TEXT files to F and S. */
+/* Assemble all the modified source files and copy the TEXT files to F and S (as Z). */
 /* TODO: Is there a way to ensure that every package follows the "update if macro changed" rule? */
 'herccontrol "/_ASMALL EXEC VMFASM DMSHRC" -w "^Ready;"'
 'herccontrol "/_RNMTXTS" -w "^Ready;"'

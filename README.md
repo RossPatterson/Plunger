@@ -16,6 +16,7 @@ See [Licenses](#licenses) below for more information.
 * [Overview](#overview)
 * [Pre-requisites](#pre-requisites)
 * [Installation](#installation)
+* [Use](#use)
 * [Notes](#notes)
 * [Plunger code](#plunger-code)
 * [Plunger command](#plunger-command)
@@ -55,22 +56,21 @@ expects to exist there.
       * HRC015DS - Prevent UPDATE from failing when the filesystem API is
         updated
       * HRC105DS - Extend FSTD/STATEFST for greater compatability with VM/SP
-     * more?
-  * HRC100DS - Add EXEC-in-storage support.  (Needed by the Rexx-related
-    stages).
-  * HRC405DS - Fix several with nucleus extensions.
-  * HRC422DS - NUCXTEXT occasionally causes DMSLIO109S.
-  * RAP016DS - BALR to TYPLIN through ADMSCWR. (Needed by the CMS stage,
-    and maybe others).
+      * Probably more if you want to run the unit tests.
+  * HRC405DS - NUCEXT and SUBCOM macro and function fixes. (Required both to
+    build and to run Plunger.)
+  * HRC422DS - NUCXTEXT occasionally causes DMSLIO109S. (If you want to run the
+    unit tests.)
+  * RAP016DS - BALR to TYPLIN through ADMSCWR. (Needed by the CMS and COMMAND
+    stages, and maybe others).
   * bREXX version 1.2.0 or higher - support for in-storage Rexx programs.
     (Needed by the Rexx-related stages.)
-  * more?
 
 ## Installation
 
 1. Get the distribution files from the [_CMS Pipelines Runtime Library
 Distribution_](http://vm.marist.edu/~pipeline/index.html#Runtime). You want the
-"All executables" and "All documentation" archive (_i.e_, `VMARC`) files.
+"All executables" and "All documentation" archive (_i.e._, `VMARC`) files.
 
 1. Get the _Plunger_ package from
 [GitHub](https://github.com/RossPatterson/Plunger/releases).
@@ -95,6 +95,18 @@ documentation.
 1. Optionally build and deploy the _CMS Pipelines_ HELP files.  See the
 [Pipelines HELP note](#pipelines-help) for the process to do so.
 
+## Use
+
+After installation, it is easy to use CMS Pipelines.  Issue the `PLUNGER
+ENABLE` command to load Plunger and Pipelines into memory, and then issue
+`PIPE` commands exactly like the Pipelines documentation says.  To unload
+Plunger and Pipelines, issue the `PLUNGER DISABLE` command.
+
+Plunger is relatively small - about 12KB in memory.  Pipelines is not - it
+consumes 1.1MB when loaded.  There are no options to reduce either of these,
+so you may need to increase the storage size of some of your CMS virtual
+machines to use Pipelines.
+
 ## Notes
 
 ### Pipelines documentation
@@ -113,7 +125,7 @@ contains all the other files, and can be uploaded to CMS and unpacked.
 
 ### Pipelines HELP
 _CMS Pipelines_ has a collection of almost 1,400 HELP files (approximately 15
-3350 cylinders), documenting each comand (`HELPCMS`), stage (`HELPPIPE`),
+3350 cylinders), documenting each command (`HELPCMS`), stage (`HELPPIPE`),
 subcommand (`HELPPIPC`), syntax element (`HELPPIPS`), and message (`HELPMSG`).
 All of it is available in the _CMS Pipelines Runtime Library Distribution_, in
 the `RUNTIME VMARC` package, but it must be extracted and installed to
@@ -159,8 +171,8 @@ packages:
    ```rexx
       /* Some don't have a mode number.  Dunno why. */
       if \datatype(mode_number, 'W') then do
-     parse var in . fn ft systems
-     mode_number = ''
+          parse var in . fn ft systems
+          mode_number = ''
       end
    ```
 
@@ -183,7 +195,7 @@ packages:
    ```
 
 1. Move the generated files and the updated `HELP HELPTASK` file to a minidisk
-where CMS users can accessthem (_e.g._, the CMS `MAINT 19D` HELP disk).
+where CMS users can access them (_e.g._, the CMS `MAINT 19D` HELP disk).
 
 1. Optionally, delete all the files extracted in the first step:
    ```
@@ -206,16 +218,18 @@ that _VM/370 Community Edition_ does not offer. That includes:
 * `ESPIE` SVC - basic support to map the MVS `ESPIE` macro to the OS/360 (and
 CMS) `SPIE` macro.
 * `FORM=E` disk I/O macro functions - just remapping plists, not expanding
-limits.  Specifically, `EPOINT`, `ESTATE`, `ESTATEW`, `RDBUF`, and `WRBUF`
-* EXEC in storage functions - a front-end to the `EXEC` command, and the
-`EXECLOAD`, `EXECDROP`, `EXECMAP`, and `EXECSTAT` commands.
+limits.  Specifically, `EPOINT`, `ESTATE`, `ESTATEW`, `RDBUF`, and `WRBUF`.
+* EXEC-in-storage functions - a front-end to the `EXEC` command, and the
+`EXECLOAD`, `EXECDROP`, `EXECMAP`, and `EXECSTAT` commands.  If you have
+installed CMS mod HRC100DS, these will not be enabled, and the HRC100DS
+versions will be used instead.
 * `GLOBALV` command - a very limited implementation, just enough for Pipelines'
 use cases.
 * `LINERD` function - basic support to map `LINERD` macros into `RDTERM`
 equivalents.
 * `NUCXLOAD` command - a nearly-complete re-implementation of the VM/SP5 CMS
 `NUCXLOAD` command, including relocation support, but only for `PIPELINE
-MODULE`.
+MODULE`.  ***This has not been tested with any other MODULE.***
 * `WAITRD` function - map an undocumented use of the `RDTERM` macro to
 `EDIT=NO`.
 * Several CPU instructions that Pipelines depends on but that are not part of
@@ -225,41 +239,44 @@ currently includes:
   * `BRC` (A7x4) - Branch Relative Conditional, fully implemented.
   * `BSM` (0B) - Branch and Set Mode, implemented to always set 24-bit mode.
   * `CHI` (A7xE) - Compare Halfword Immediate, fully implemented.
-  * `LAE`(51) - Load Address Extended, implemented exactly as LA (41).
+  * `LAE` (51) - Load Address Extended, implemented exactly as LA (41).
   * `STAM` (9B) - Store Access Multiple, implemented to always store 0 ("home
 space").
 
 _Plunger_ also modifies several parts of the _CMS Pipelines_ code in memory,
 altering them while it loads `PIPELINE MODULE` as a nucleus extension.  In
 general, _Plunger_ tries to avoid this technique, but there are things that
-simply can't be "faked out" with shims and remappings.  All these patches, and
+simply can't be "faked out" with shims and remappings, or that are trivial
+enough to make this the better choice of techniques.  All these patches, and
 the code that applies them, are in the `PLUZAP ASSEMBLE` source file, in a form
 that anyone familiar with the CMS `ZAP` command should understand.  The current
 list of ZAPs is:
-* `ZAP001` - Suppress message _FPLINY1291I The field ADMSCWR in NUCON is
-incorrect; found 00F8C158; display of ABEND information may be in jeopardy._
+* `ZAP001` - Suppress message "_FPLINY1291I The field ADMSCWR in NUCON is
+incorrect; found 00F8C158; display of ABEND information may be in jeopardy._"
 * `ZAP003` - Relocate `NUCMFLAG` in CMS `NUCON`.  See
 https://github.com/s390guy/vm370/issues/97 for details.
-* `ZAP004` - Set the "VM/SP" bit in `DIAG x'0000'`.
+* `ZAP004` - Set the "VM/SP" bit in the CO `DIAG x'0000'` response.
 * `ZAP005` - PIPELINE uses a filesystem workarea called `FVS`, but it expects a
-newer version than VM/370 CE's
+newer version than VM/370 CE's.
 * `ZAP006` - PIPELINE calls RENAME (NOUPDIR, but VM/370 R6 expects (NOUPDIRT.
 * `ZAP007` - Bypass DMSEXC when calling Rexx stages (pre-dates CMS update
 HRC100DS, and is not applied if HRC100DS is installed on CMS).
 
 ## `PLUNGER` command
 
-`PLUNGER MODULE` is a self-loading nucleus extension.  It sets itself up in
-memory the first time a `PLUNGER` command is issued.
+`PLUNGER MODULE` is a small self-loading nucleus extension.  It sets itself up
+in memory the first time a `PLUNGER` command is issued.
 
 * `PLUNGER VERSION` - display the version number and build date and time.
 * `PLUNGER DEBUG [ON|OFF]` - display and possibly change the debugging status.
-* `PLUNGER ENABLE' - enable all the services and load and initialize _CMS
+* `PLUNGER ENABLE` - enable all the services and load and initialize _CMS
 Pipelines_.
-* `PLUNGER DISABLE` - disable all the services and unload _CMS Pipelines_.
+* `PLUNGER DISABLE` - disable all the services and unload _CMS Pipelines_ from
+memory.
 
-`PLUNGER` also responds to ABEND and `NUCXDROP` situations via the `SERVICE`
-nucleus extension option.
+`PLUNGER` also responds to `ABEND` and `NUCXDROP` situations via the `SERVICE`
+nucleus extension option.  When dropped via `NUCXDROP`, Plunger also drops
+Pipelines.
 
 ## Licenses
 
@@ -272,7 +289,8 @@ specific license.
 See http://vm.marist.edu/~pipeline/tandc.html for the specific terms and
 conditions related to distributing the _CMS Pipelines Runtime Library
 Distribution_.  The remainder of this section is provided as courtesy for
-_Plunger_ users, and does not supercede or replace thoe terms and conditions.
+_Plunger_ users, and does not supersede, modify, or replace those terms and
+conditions.
 
 Melinda Varian of Princeton University, in her paper
 ["_Pipe Dreams - What's New in CMS/TSO Pipelines_"](http://vm.marist.edu/~pipeline/pipdream.pdf)
@@ -379,5 +397,5 @@ contact her at that Princeton email address.
 _Plunger_ itself is free and unencumbered software and is released into the
 public domain.  The specific licensing text _Plunger_ uses to do this is
 [The Unlicense](https://unlicense.org), which is contained as file
-`UNLICENSE.txt` in the `PLUNGER VMARC` package, and which you can and should
+`UNLICENS.memo` in the `PLUNGER VMARC` package, and which you can and should
 read in its (brief) entirety.
