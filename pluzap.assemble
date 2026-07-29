@@ -11,10 +11,13 @@ PLUZAPMD $ENTER ,
          NI    WRKFLAG1,255-(WRKF1NGO+WRKF1ERX) Turn off "NO GO" flags.
          LA    R4,ZAPTBL1     -> Main ZAP table.
          BAL   R9,APPLY       Apply the main set of ZAPs.
+         SPACE 3
          TM    PRMFLAG1,PRMF1EXS  Does CMS have EXIS support?
-         BO    EXIT           Yes, skip the EXIS ZAPs.
-         LA    R4,ZAPTBL2     -> EXIS ZAP table.
+         BO    GOTEXIS        Yes, skip the EXIS ZAPs.
+         LA    R4,ZAP007      -> EXIS-support ZAP.
          BAL   R9,APPLY       Apply the EXEC-in-storage set of ZAPs.
+GOTEXIS  DS    0H
+         SPACE 3
 EXIT     DS    0H
          SR    R15,R15        Assume all is well.
          TM    WRKFLAG1,WRKF1ERX  Did at least one VER fail?
@@ -31,33 +34,49 @@ MAINLOOP DS    0H
          TM    PRMFLAG1,PRMF1DBG  Are we debugging?
          BZ    NODEBUG        No, skip message.
          AIF   (NOT &DEBUG).NXLD02
-         LR    R7,R5
-         TM    ZAPTYPE,X'40'
-         BZ    *+6
-         A     R7,PRMPIPMD
          LA    R8,1(,R6)
 MSG015   LINEDIT TEXT='PLUZAP015I ZAP .. ...... .......................*
                ............',                                          *
-               SUB=(CHARA,(ZAPTYPE,1),HEX,(R7),HEX4A,(ZAPDATA,(R8))),  *
+               SUB=(DECA,ZAPTYPE,HEX,(R5),HEX4A,(ZAPDATA,(R8))),       *
                DISP=ERRMSG,DOT=NO,MF=(E,WRKLEDPL)
 .NXLD02  ANOP  ,
 NODEBUG  DS    0H
-         CLI   ZAPTYPE,ZAPTEND  Is it an END entry?
-         BE    CARDEND        Yes, do it.
-         CLI   ZAPTYPE,ZAPTREP  Is it a REP entry?
-         BE    CARDREP        Yes, do it.
-         CLI   ZAPTYPE,ZAPTRES  Is it a RESET entry?
-         BE    CARDRSET       Yes, do it.
-         CLI   ZAPTYPE,ZAPTVER  Is it a VER entry?
-         BE    CARDVER        Yes, do it.
-         DC    H'0,1'         Can't happen.
+         SR    R1,R1          Get ZAP
+         IC    R1,ZAPTYPE        verb type.
+         C     R1,=A(ZAPTMAX)  Is it a legal value?
+         BH    CARDBAD        No, how did THAT happen?
+         B     *+4(R1)        Yes, go to handler:
+         B     CARDEND        END
+         B     CARDREPN       REP RELOC=NONE
+         B     CARDREPO       REP RELOC=OFFSET
+         B     CARDREPJ       REP RELOC=PIPMOD
+         B     CARDREPR       REP RELOC=PLUNGER
+         B     CARDRSET       RESET
+         B     CARDVERN       VER RELOC=NONE
+         B     CARDVERJ       VER RELOC=PIPMOD
+         SPACE 3
+CARDBAD  DS    0H
+         BAL   R14,MSG027     "Illegal ZAP line at <addr>: <data>"
+         B     NEXTCARD       Go process next entry.
          SPACE 3
 CARDRSET DS    0H
          NI    WRKFLAG1,255-WRKF1NGO  Turn off "NO GO" flag.
          SH    R6,=H'1'       Fix length.
          B     NEXTCARD       Go process next entry.
          SPACE 3
-CARDREP  DS    0H
+CARDREPJ DS    0H
+         TM    WRKFLAG1,WRKF1NGO  Is the "NO GO" flag on?
+         BO    ERRNOGO        Yes, don't do it.
+         C     R6,=F'3'       Length=4?
+         BNE   CARDBAD        No, how did THAT happen?
+         ICM   R1,B'1111',ZAPDATA  Yes, get the data
+         S     R1,=A(X'20000')   - PIPMOD base address
+         A     R1,PRMPIPMD          + PIPMOD address in memory.
+         A     R5,PRMPIPMD    Convert offset to address.
+         STCM  R1,B'1111',0(R5)  Replace target with relocated data.
+         B     NEXTCARD       Go process next entry.
+         SPACE 3
+CARDREPN DS    0H
          TM    WRKFLAG1,WRKF1NGO  Is the "NO GO" flag on?
          BO    ERRNOGO        Yes, don't do it.
          A     R5,PRMPIPMD    Convert offset to address.
@@ -65,11 +84,48 @@ CARDREP  DS    0H
          EX    R6,*-6         Replace the target with ZAP data.
          B     NEXTCARD       Go process next entry.
          SPACE 3
-CARDVER  DS    0H
+CARDREPO DS    0H
+*
+* RELOC=OFFSET: final value is DATA - DATA_LOCATION ("DC A(XXX-*)").
+*
+         C     R6,=F'3'       Length=4?
+         BNE   CARDBAD        No, how did THAT happen?
+         ICM   R1,B'1111',ZAPDATA  Yes, get the data
+         S     R1,=A(X'20000')   - PLUNGER base address
+         A     R1,PRMPLUNG          + PLUNGER address in memory.
+         A     R5,PRMPIPMD    Convert offset to address.
+         SR    R1,R5          Relative to target location.
+         STCM  R1,B'1111',0(R5)  Replace target with relocated data.
+         B     NEXTCARD       Go process next entry.
+         SPACE 3
+CARDREPR DS    0H
+         C     R6,=F'3'       Length=4?
+         BNE   CARDBAD        No, how did THAT happen?
+         ICM   R1,B'1111',ZAPDATA  Yes, get the data
+         S     R1,=A(X'20000')   - PLUNGER base address
+         A     R1,PRMPLUNG          + PLUNGER address in memory.
+         A     R5,PRMPIPMD    Convert offset to address.
+         STCM  R1,B'1111',0(R5)  Replace target with relocated data.
+         B     NEXTCARD       Go process next entry.
+         SPACE 3
+CARDVERN DS    0H
          A     R5,PRMPIPMD    Convert offset to address.
          CLC   0(*-*,R5),ZAPDATA *** EXecuted ***
          EX    R6,*-6         Does the data match?
          BE    NEXTCARD       Yes, go process next entry.
+         B     CARDVERF       No, go fail the ZAP.
+         SPACE 3
+CARDVERJ DS    0H
+         C     R6,=F'3'       Length=4?
+         BNE   CARDBAD        No, how did THAT happen?
+         ICM   R1,B'1111',ZAPDATA  Yes, get the data
+         S     R1,=A(X'20000')   - PIPMOD base address
+         A     R1,PRMPIPMD          + PIPMOD address in memory.
+         A     R5,PRMPIPMD    Convert offset to address.
+         CLM   R1,B'1111',0(R5)  Does the relocated data match?
+         BE    NEXTCARD       Yes, go process next entry.
+         SPACE 3
+CARDVERF DS    0H
          BAL   R14,MSG016     "VER failed: <addr> <data>"
          TM    WRKFLAG1,WRKF1NGO  Flag already set?
          BO    NEXTCARD       Yes, go process next entry.
@@ -121,6 +177,14 @@ MSG018   DS    0H
                MF=(E,WRKLEDPL)
          LA    R15,18
          BR    R14
+         SPACE 3
+MSG027   DS    0H
+         LINEDIT TEXT='PLUZAP027E Illegal ZAP line at ........: .......*
+               ......................................................',*
+               SUB=(HEX4A,(R4),HEXA,(R4)),                             *
+               DISP=ERRMSG,RENT=NO,                                    *
+               MF=(E,WRKLEDPL)
+         B     MSG017         Set NOGO flag.
          POP   USING
          TITLE 'Main ZAPs to always apply to PIPELINE.'
 ZAPTBL1  DS    0D
@@ -228,9 +292,55 @@ ZAP008   DS    0X
          $ZAP  REP,75F32,47F0C014         B     X'014'(,R12)
          $ZAP  RESET
          EJECT ,
+ZAP009   DS    0H
+*
+*        Pipelines occasionally crashes with a PROG 0009 (divide-by-0)
+*        exception, and crashes CMS as a result.  It appears that this
+*        results from code trying to handle EDF disks, which CMS370
+*        does not support.  This ZAP forces the "<", ">", ">>",
+*        "<MDSK", ">MDSK", and ">>MDSK" device drivers to be handled
+*        as "MDSKSLOW", using the FS* macro functions.  Pipelines has
+*        a facility to this via an FST bit, but it doesn't seem to
+*        solve 100% of the cases (ref. GitHub Issue #9).
+*
+*        To make matters worse, ">" and ">MDSK" are supposed to replace
+*        the output file, but "MDSKSLOW" can only append to it.  So we
+*        have to trap ">" and ">MDSK" and send them to our code in
+*        PLUFNCMS to ERASE the file before then continuing on to
+*        "MDSKSLOW".
+*
+         EXTRN PLUFNCMS
+         $ZAP  VER,5828,D4C4E2D2E2D3D6E6        DC    CL8'MDSKSLOW'
+         $ZAP  VER,5834,0002CA20,RELOC=PIPMOD   DC    A(FPLDSKSL)
+         $ZAP  REP,CA30,PLUFNCMS,RELOC=OFFSET   DC    V(PLUFNCMS)
+*
+         $ZAP  VER,45A8,4C40404040404040        DC    CL8'<       '
+         $ZAP  VER,45B4,0008BC18,RELOC=PIPMOD   DC    A(FPLDSCRO)
+         $ZAP  REP,45B4,0002CA20,RELOC=PIPMOD   DC    A(FPLDSKSL)
+*
+         $ZAP  VER,45B8,4CD4C4E2D2404040        DC    CL8'<MDSK   '
+         $ZAP  VER,45C4,0002CA80,RELOC=PIPMOD   DC    A(FPLDSKRO)
+         $ZAP  REP,45C4,0002CA20,RELOC=PIPMOD   DC    A(FPLDSKSL)
+*
+         $ZAP  VER,4608,6E40404040404040        DC    CL8'>       '
+         $ZAP  VER,4614,0008BCA8,RELOC=PIPMOD   DC    A(FPLDSCWE)
+         $ZAP  REP,4614,0002CA20,RELOC=PIPMOD   DC    A(FPLDSKSL)
+*
+         $ZAP  VER,4618,6E6E404040404040        DC    CL8'>>      '
+         $ZAP  VER,4624,0008BC60,RELOC=PIPMOD   DC    A(FPLDSCWO)
+         $ZAP  REP,4624,0002CA20,RELOC=PIPMOD   DC    A(FPLDSKSL)
+*
+         $ZAP  VER,4628,6E6ED4C4E2D24040        DC    CL8'>>MDSK  '
+         $ZAP  VER,4634,0002CAE8,RELOC=PIPMOD   DC    A(FPLDSKWO)
+         $ZAP  REP,4634,0002CA20,RELOC=PIPMOD   DC    A(FPLDSKSL)
+*
+         $ZAP  VER,4678,6ED4C4E2D2404040        DC    CL8'>MDSK   '
+         $ZAP  VER,4684,0002CB40,RELOC=PIPMOD   DC    A(FPLDSKWE)
+         $ZAP  REP,4684,0002CA20,RELOC=PIPMOD   DC    A(FPLDSKSL)
+         $ZAP  RESET
+         EJECT ,
          $ZAP  END
-         TITLE 'EXIS ZAPs to skip if HRC100DS installed.'
-ZAPTBL2  DS    0D
+         TITLE 'EXIS ZAP to apply if HRC100DS is not installed.'
 ZAP007   DS    0X
 *
 *        PIPELINE calls EXEC via BALR to run Rexx stages.  Make it
@@ -250,11 +360,18 @@ ZAP007   DS    0X
          TITLE 'ZAP details.'
 ZAPENT   DSECT ,
 ZAPOFF   DS    AL4            Offset to code location.
-ZAPTYPE  DS    C              Entry type.
-ZAPTEND  EQU   C'E'           - END
-ZAPTREP  EQU   C'R'           - REP
-ZAPTRES  EQU   C'C'           - RESET
-ZAPTVER  EQU   C'V'           - VER
+ZAPTYPE  DS    X              Entry type.
+ZAPTEND  EQU   0              - END
+ZAPTREPN EQU   4              - REP RELOC=NONE
+ZAPTREPO EQU   8              - REP RELOC=OFFSET
+ZAPTREPJ EQU   12             - REP RELOC=PIPMOD
+ZAPTREPR EQU   16             - REP RELOC=PLUNGER
+ZAPTRES  EQU   20             - RESET
+ZAPTVERN EQU   24             - VER RELOC=NONE
+*ZAPTVERO                     - VER RELOC=OFFSET - unused
+ZAPTVERJ EQU   28             - VER RELOC=PIPMOD
+*ZAPTVERR                     - VER RELOC=PLUNGER - unused
+ZAPTMAX  EQU   28             Highest value of ZAPTYPE
 ZAPDLEN  DS    AL1            Data length.
 ZAPDATA  DS    0X             Start of ZAP data.
          TITLE 'Working storage.'
@@ -281,4 +398,5 @@ NUCPLUPT DS    A              -> PLUNGER PRMSECT.
          EJECT ,
          PLUPRM ,
          REGEQU ,
+         SCBLOCK ,
          END   ,

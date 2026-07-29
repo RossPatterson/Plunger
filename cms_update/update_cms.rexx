@@ -162,7 +162,8 @@ Call UploadAndUnpack UploadDir || '/rap016ds.vmarc', 'MAINT', 'BALR to TYPLIN th
 'herccontrol "/ERASE CMSTEST MAP A" -w "^Ready;"'
 
 /* Shut VM down. */
-'herccontrol "/LOGOFF" -w "^VM/370 Online"'
+/* 'herccontrol "/LOGOFF" -w "^VM/370 Online"' */
+'herccontrol "/LOGOFF" -w "Online"'
 'herccontrol "/LOGON OPERATOR OPERATOR" -w "RECONNECTED AT"'
 'herccontrol "/SHUTDOWN" -w "^HHCCP011I"'
 

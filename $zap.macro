@@ -1,21 +1,75 @@
          MACRO ,
-&LABEL   $ZAP  &TYPE,&OFFSETX,&DATA
+&LABEL   $ZAP  &TYPE,&OFFSETX,&DATA,&RELOC=NONE
+.*
+.*  &RELOC=
+.*     NONE - no relcation
+.*     PIPMOD - data is relocated relative to PIPMOD
+.*     PLUNGER - data is relocated relative to PLUNGER
+.*     OFFSET - data is relocated relative to target location
+.*
          LCLC  &DATALBL,&TCODE
 &DATALBL SETC  'Z&SYSNDX.D'
-&TCODE   SETC  'E'
-         AIF   ('&TYPE' EQ 'END').TOK2
-&TCODE   SETC  'R'
-         AIF   ('&TYPE' EQ 'REP').TOK1
-&TCODE   SETC  'C'
-         AIF   ('&TYPE' EQ 'RESET').TOK2
-&TCODE   SETC  'V'
-         AIF   ('&TYPE' EQ 'VER').TOK1
-         MNOTE 8,'TYPE=&TYPE is invalid'
+         AIF   ('&TYPE' EQ 'VER').VER1
+         AIF   ('&TYPE' EQ 'REP').REP1
+         AIF   ('&DATA' NE '').DBAD
+         AIF   ('&OFFSETX' NE '').OBAD
+         AIF   ('&RELOC' NE 'NONE').RBAD
+&TCODE   SETC  'ZAPTEND'
+         AIF   ('&TYPE' EQ 'END').NODATA
+&TCODE   SETC  'ZAPTRES'
+         AIF   ('&TYPE' EQ 'RESET').NODATA
+         AGO   .TBAD
+.VER1    ANOP  ,
+&TCODE   SETC  'ZAPTVERN'
+         AIF   ('&RELOC' EQ 'NONE').DATAN
+.*&TCODE   SETC  'ZAPTVERO'
+.*         AIF   ('&RELOC' EQ 'OFFSET').DATAO
+.*&TCODE   SETC  'ZAPTVERR'
+.*         AIF   ('&RELOC' EQ 'PLUNGER').DATAR
+         AIF   (K'&DATA NE 8).DBAD
+&TCODE   SETC  'ZAPTVERJ'
+         AIF   ('&RELOC' EQ 'PIPMOD').DATAJ
+         AGO   .RBAD
+.REP1    ANOP  ,
+&TCODE   SETC  'ZAPTREPN'
+         AIF   ('&RELOC' EQ 'NONE').DATAN
+&TCODE   SETC  'ZAPTREPO'
+         AIF   ('&RELOC' EQ 'OFFSET').DATAO
+&TCODE   SETC  'ZAPTREPR'
+         AIF   ('&RELOC' EQ 'PLUNGER').DATAR
+         AIF   (K'&DATA NE 8).DBAD
+&TCODE   SETC  'ZAPTREPJ'
+         AIF   ('&RELOC' EQ 'PIPMOD').DATAJ
+         AGO   .RBAD
+.NODATA  ANOP  ,
+&LABEL   DC    AL4(0),AL1(&TCODE),AL1(0)
          MEXIT ,
-.TOK1    ANOP  ,
-&LABEL   DC    AL4(X'&OFFSETX'),C'&TCODE',AL1(L'&DATALBL-1)
+.DATAJ   ANOP  ,
+&LABEL   DC    AL4(X'&OFFSETX'),AL1(&TCODE),AL1(4-1)
+&DATALBL DC    XL4'&DATA'
+         MEXIT ,
+.DATAN   ANOP  ,
+&LABEL   DC    AL4(X'&OFFSETX'),AL1(&TCODE),AL1(L'&DATALBL-1)
 &DATALBL DC    X'&DATA'
          MEXIT ,
-.TOK2    ANOP  ,
-&LABEL   DC    AL4(0),C'&TCODE',AL1(0)
+.DATAO   ANOP  ,
+&LABEL   DC    AL4(X'&OFFSETX'),AL1(&TCODE),AL1(4-1)
+&DATALBL DC    AL4(&DATA)
+         MEXIT ,
+.DATAR   ANOP  ,
+&LABEL   DC    AL4(X'&OFFSETX'),AL1(&TCODE),AL1(4-1)
+&DATALBL DC    AL4(&DATA)
+         MEXIT ,
+.DBAD    ANOP  ,
+         MNOTE 8,'"&DATA" is invalid for &TYPE.'
+         MEXIT ,
+.OBAD    ANOP  ,
+         MNOTE 8,'"&OFFSETX" is invalid for &TYPE.'
+         MEXIT ,
+.RBAD    ANOP  ,
+         MNOTE 8,'RELOC=&RELOC is invalid for &TYPE.'
+         MEXIT ,
+.TBAD    ANOP  ,
+         MNOTE 8,'"&TYPE" is invalid.'
+         MEXIT ,
          MEND  ,

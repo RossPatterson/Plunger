@@ -120,13 +120,14 @@ TestEnable:
 
 TestEnableTwice:
    'WITHSTEM OUTPUT A. COMMAND PLUNGER ENABLE'
-   Call AssertEqual 0, A.0
+   RefA.0 = 0
+   Call AssertStemEqual 'RefA.', 'A.'
    'WITHSTEM OUTPUT NBEFORE. COMMAND NUCXMAP'
-   Ref.0 = 1
-   Ref.1 = 'PLUCMD010E PLUNGER is already enabled.'
+   RefB.0 = 1
+   RefB.1 = 'PLUCMD010E PLUNGER is already enabled.'
    Call NoError 'WITHSTEM OUTPUT B. COMMAND PLUNGER ENABLE'
    $RC = RC
-   Call AssertStemEqual 'Ref.', 'B.'
+   Call AssertStemEqual 'RefB.', 'B.'
    Call AssertEqual 10, $RC
    'WITHSTEM OUTPUT NAFTER. COMMAND NUCXMAP'
    Call AssertEqual NBefore.0, NAfter.0

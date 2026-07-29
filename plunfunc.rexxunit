@@ -56,7 +56,6 @@ TestAbnExit:
    I=I+1; A.I = "         END"
    A.0 = I
    Call Assemble 'A.', 'TAEX'
-   Call NoError 'CP DISCARD TRACE END'
    'LOAD TAEX ( START'
    Call Erase 'TAEX * A'
    Return
@@ -533,7 +532,6 @@ TestSvc109:
    I=I+1; A.I = "         END"
    A.0 = I
    Call Assemble 'A.', 'TS109'
-   Call NoError 'CP DISCARD TRACE END'
    'LOAD TS109 ( START'
    Call Erase 'TS109 * A'
    Return

@@ -179,7 +179,7 @@ MSG024   DS    0H
          LA    R15,24
          BR    R14
          SPACE 3
-MSG028   DS    0H
+MSG025   DS    0H
          LINEDIT TEXT='PLUFNC025E File ................. not found',   *
                SUB=(CHAR8A,8(,R3)),                                    *
                DISP=ERRMSG,                                            *
@@ -328,8 +328,14 @@ ESTATEX  DS    0H
          LA    R1,WRKDSKPL    Issue
          SVC   202               STATE / STATEW.
          DC    AL4(1)
-         MVC   FSCBBUFF,WRKDSKPL+(FSCBBUFF-FSCBD) Pass FST pointer out.
-         SPACE 1
+         LTR   R15,R15        Did it work?
+         BNZ   STATEXIT       No, we're done.
+         L     R4,WRKDSKPL+(FSCBBUFF-FSCBD) Get A(FST).
+         USING FSTD,R4
+         OI    FSTPIPFL,FSTPIPSL  Make Pipelines use slow mode.
+         ST    R4,FSCBBUFF    Pass FST pointer out.
+         DROP  R4
+         SPACE 3
 STATEXIT $EXIT ,
          SPACE 3
 STATERIT BAL   R14,MSG021     "Record number <n> is too large"
@@ -481,7 +487,7 @@ EXDREXIT DS    0H
 EXDRERNF DS    0H
          CLC   =CL16'*       *',8(R3)  All wildcards?
          BE    EXDREXOK       Yes, that's not an error.
-         BAL   R14,MSG028     "File <fn> <ft> not found"
+         BAL   R14,MSG025     "File <fn> <ft> not found"
          B     EXDREXIT
          SPACE 3
 EXDRERST BAL   R14,MSG023     "Invalid command: <...>"
@@ -586,7 +592,7 @@ EXLDERIO BAL   R14,MSG024    "Error <rc> from <func> on <fn> <ft> <fm>"
          DMSFRET DWORDS=(0),LOC=(1)  Return FBLOCK etc.
          B     EXLDEXIT
          SPACE 3
-EXLDERNF BAL   R14,MSG028     "File <fn> <ft> not found"
+EXLDERNF BAL   R14,MSG025     "File <fn> <ft> not found"
          B     EXLDEXIT
          DROP  R5
          POP   USING
@@ -1267,6 +1273,236 @@ XXBFERNR BAL   R14,MSG022     "Record count <n> is too large"
          DROP  R3
          POP   USING
          LTORG ,
+         TITLE 'PLUFNCMS - Front-end for the MDSKSLOW stage.'
+*
+*        This wrapper for MDSKSLOW (which is called by DISKSLOW, aka
+*        FILESLOW), that incompatibly changes how it behaves when
+*        invoked via the "nose write" (">") stage-name.  Plunger
+*        forces ">" (et al.) down the MDSKSLOW path because the
+*        >MDSK path may try to use undocumented interfaces (EDF block
+*        I/O, maybe?), which are too complex to mimic in VM/370 CMS.
+*
+*        This introduces two incompatibilities:
+*          1. "> fn fn [fm] FROM number" is now a valid syntax.  Since
+*             real ">" doesn't accept "FROM", this shouldn't break
+*             anything.
+*          2. ">" will now **always** erase its output file before
+*             starting if it already exists, even if the stage exits
+*             with a non-0 RC.  The real ">" checks to see if the file
+*             exists, and if so:
+*                "a utility file is written. When this file has been
+*                written successfully, the original file is erased and
+*                the utility file renamed to the specified name."
+*                (Piperef pp. 269)
+*             This might cause a problem, but it's a small edge-case,
+*             so only sophisticated uses should fail.
+*
+*        See John Hartmann's 1995-05 paper for SHARE 84 sessions 2610
+*        and 2611, "Writing Assembler Filters for Use with CMS
+*        Pipelines", for details on entry linkage.
+*
+         PUSH  USING
+         ENTRY PLUFNCMS
+PLUFNCMS DS    0H
+*
+*        Entry is user key, supervisor state, disabled.
+*        R2/R3 = A(argstring) / L'argstring
+*        R12 = R15 = A(PLUFNCMS)
+*
+         DROP  ,
+         USING NUCON,0
+         USING PLUFNCMS,R12
+         SPKA  0              Go key-0.
+         STM   R0,R15,ECRLOG  Save Pipelines' registers for a moment.
+         L     R10,NUCPLUPT
+         USING PRMSECT,R10
+         LA    R3,WRKLEN+7    Get workarea length
+         SRL   R3,3              in doublewords.
+         LR    R0,R3          Get
+         DMSFREE DWORDS=(0)      workarea.
+         LTR   R15,R15        OK?
+         BNZ   MDSLEXIT       No, error.
+         LR    R13,R1
+         USING WRKSECT,R13
+         ST    R3,WRKLEND     Save its size.
+         MVC   WRKSAVE(4*16),ECRLOG
+         LM    R2,R3,WRKSAVE+(R2*4)  Get arg addr/len back.
+         SPACE 3
+*
+*        Back up and check the stage name.
+*
+         LR    R1,R2          Get argstring pointer.
+MDSLSNSB DS    0H
+         BCTR  R1,0           Back up one character.
+         CLI   0(R1),C' '     Found the stagename end?
+         BNE   MDSLCKNO       Yes, go check it.
+         B     MDSLSNSB       No, keep going backwards.
+MDSLCKNO DS    0H
+         LR    R15,R1         Copy
+         SH    R15,=H'5'         name to
+         MVC   WRKPLST1(6),0(R15)   temp and
+         CLC   =C'>>',WRKPLST1+4   Is it ">>"?
+         BE    MDSLEXIT       Yes, it's not ours.
+         CLC   =C'>',WRKPLST1+5    Is it ">"?
+         BE    MDSLDOIT       Yes, go handle it.
+         CLC   =C'>>',WRKPLST1  Is it ">>MDSK"?
+         BE    MDSLEXIT       Yes, it's not ours.
+         CLC   =C'>',WRKPLST1+1  Is it ">MDSK"?
+         BNE   MDSLEXIT       No, it's not ours.
+         SPACE 3
+MDSLDOIT DS    0H             It's ">" or ">MDSK", handle it.
+         SPACE 3
+         XC    WRKDSKPL,WRKDSKPL  Clear out plist.
+         LA    R9,WRKDSKPL
+         USING FSCBD,R9
+*
+*        We're pretty lazy parsing here, because Pipelines has already
+*        syntax-checked the parameters, so we know there's at least a
+*        FN and FT, and maybe an FM, each separated by some blanks.
+*
+         MVC   FSCBFN(18),=C'                * '  Init FN FT FM.
+*
+*        Skip any leading blanks.
+*
+MDSLLBLP DS    0H
+         CLI   0(R2),C' '     Is it a blank?
+         BNE   MDSLLBOK       No, done.
+         LTR   R3,R3          Any more left?
+         BNP   MDSLLBOK       No, done.
+         LA    R2,1(,R2)      Yes, skip it.
+         BCT   R3,MDSLLBLP    Next character please!
+MDSLLBOK DS    0H
+         SPACE 3
+*
+*        Scan the FN.
+*
+         LA    R1,FSCBFN
+         LA    R0,L'FSCBFN
+MDSLFNLP DS    0H
+         CLI   0(R2),C' '     Is it a blank?
+         BE    MDSLFNOK       Yes, done.
+         LTR   R3,R3          Any more left?
+         BNP   MDSLFNOK       No, done.
+         MVC   0(1,R1),0(R2)  Copy it.
+         LA    R1,1(,R1)      Next
+         LA    R2,1(,R2)         character
+         BCTR  R3,0                 please
+         BCT   R0,MDSLFNLP             !
+MDSLFNOK DS    0H
+         SPACE 3
+*
+*        Skip any intervening blanks.
+*
+MDSLIB1L DS    0H
+         CLI   0(R2),C' '     Is it a blank?
+         BNE   MDSLIB1K       No, done.
+         LTR   R3,R3          Any more left?
+         BNP   MDSLIB1K       No, done.
+         LA    R2,1(,R2)      Yes, skip it.
+         BCT   R3,MDSLIB1L    Next character please!
+MDSLIB1K DS    0H
+         SPACE 3
+*
+*        Scan the FT.
+*
+         LA    R1,FSCBFT
+         LA    R0,L'FSCBFT
+MDSLFTLP DS    0H
+         CLI   0(R2),C' '     Is it a blank?
+         BE    MDSLFTOK       Yes, done.
+         LTR   R3,R3          Any more left?
+         BNP   MDSLFTOK       No, done.
+         MVC   0(1,R1),0(R2)  Copy it.
+         LA    R1,1(,R1)      Next
+         LA    R2,1(,R2)         character
+         BCTR  R3,0                 please
+         BCT   R0,MDSLFTLP             !
+MDSLFTOK DS    0H
+         SPACE 3
+*
+*        Skip any intervening blanks.
+*
+MDSLIB2L DS    0H
+         CLI   0(R2),C' '     Is it a blank?
+         BNE   MDSLIB2K       No, done.
+         LTR   R3,R3          Any more left?
+         BNP   MDSLIB2K       No, done.
+         LA    R2,1(,R2)      Yes, skip it.
+         BCT   R3,MDSLIB2L    Next character please!
+MDSLIB2K DS    0H
+         SPACE 3
+*
+*        Scan the FM.
+*
+         LA    R1,FSCBFM
+         LA    R0,L'FSCBFM
+MDSLFMLP DS    0H
+         CLI   0(R2),C' '     Is it a blank?
+         BE    MDSLFMOK       Yes, done.
+         LTR   R3,R3          Any more left?
+         BNP   MDSLFMOK       No, done.
+         MVC   0(1,R1),0(R2)  No, copy it.
+         LA    R1,1(,R1)      Next,
+         LA    R2,1(,R2)         please
+         BCTR  R3,0                 please
+         BCT   R0,MDSLFMLP             !
+MDSLFMOK DS    0H
+         SPACE 3
+*
+*        FSSTATE screws up with ERROR=1, so handcoded instead :-(
+*
+*        FSSTATE FSCB=WRKDSKPL,ERROR=1
+         MVC   WRKDSKPL(8),=CL8'STATE'
+         MVC   WRKDSKPL+40(4),WRKDSKPL+28
+         LA    R1,WRKDSKPL
+         SVC   202
+         DC    AL4(1)
+         LTR   R15,R15        Is it there?
+         BNZ   MDSLSTUP       No, try upcased.
+         L     R1,WRKDSKPL+28  Yes, get FST address.
+* End of hand-coded FSSTATE
+         B     MDSLERAS      Go ERASE it.
+         SPACE 3
+MDSLSTUP DS    0H
+         OC    WRKDSKPL+8(18),=CL18' '  Try upcased fileid.
+*        FSSTATE FSCB=WRKDSKPL,ERROR=1
+         MVC   WRKDSKPL(8),=CL8'STATE'
+         LA    R1,WRKDSKPL
+         SVC   202
+         DC    AL4(1)
+         LTR   R15,R15        Is it there?
+         BNZ   MDSLEXIT       No, we're done.
+         L     R1,WRKDSKPL+28  Yes, get FST address.
+* End of hand-coded FSSTATE
+         SPACE 3
+MDSLERAS DS    0H
+         USING FSTD,R1
+         MVC   FSCBFM(2),FSTFMODE  Update FM, in case it was "*".
+         DROP  R1
+         MVC   WRKDSKPL(8),=CL8'ERASE'  Build
+         MVC   FSCBFM+2(6),=CL8' '   ERASE
+         MVC   FSCBFM+8(8),=8X'FF'      command.
+         LA    R1,WRKDSKPL
+         SVC   202            "ERASE fn ft fm"
+         DC    AL4(1)         Ignore errors.
+MDSLEXIT DS    0H
+         MVC   ECRLOG,WRKSAVE  Get regs before returning savearea.
+         L     R2,WRKSAVE+(16*4)      Get Pipelines' key back.
+         LA    R1,WRKSECT     Get workarea address
+         L     R0,WRKLEND        and size.
+         DMSFRET DWORDS=(0),LOC=(1)
+         XC    RSTOPSW,RSTOPSW
+         MVI   RSTOPSW+1,X'E0'  Set Pipelines' key in the PSW.
+         L     R1,=A(X'0000C704')  =A(FPLDSK:DISKGO - X'20000')
+         A     R1,PRMPIPMD    Relocate to NUCXLOADed PIPMOD.
+         ST    R1,RSTOPSW+4
+         LM    R0,R15,ECRLOG  Get Pipelines' regs back.
+         L     R12,RSTOPSW+4  Get MDSKSLOW's EP in R12
+         LR    R15,R12           and R15.
+         LPSW  RSTOPSW        Go to MDSKSLOW.
+         DROP  ,
+         LTORG ,
+         POP   USING
          TITLE 'FORM=E File System Control Block'
          FSCBD ,
 FSCBAITN DS    F              FORM=E record number.
@@ -1372,6 +1608,20 @@ ABNUWRD  DS    F             ABNEXIT user word.
          EJECT ,
          EPLIST ,
          FSTD  ,
+*
+*        "The fast interface to the file system is bypassed if the
+*        bit X'10' is on in offset X'3D' of the FST that is exposed
+*        by the FSSTATE macro. Products that compress files on the
+*        fly or in other ways intercept the file system macros should
+*        turn on this bit to ensure that CMS/TSO Pipelines uses
+*        documented interfaces only."
+*
+*        PIPELINE.PDF pp. 262
+*
+         ORG   FSTD+X'3D'
+FSTPIPFL DS    X              CMS Pipelines flag byte.
+FSTPIPSL EQU   X'10'          Force disk I/O to slow mode.
+         ORG   ,
          NUCON ,
          ORG   NUCRSV4        aka NUCON+X'090'
 NUCBREXX DS    A              bREXX address in memory

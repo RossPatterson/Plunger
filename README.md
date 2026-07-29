@@ -23,7 +23,9 @@ See [Licenses](#licenses) below for more information.
   * [Pipelines HELP](#pipelines-help)
   * [Compatibility](#compatibility)
   * [Unsupported stages](#unsupported-stages)
+  * [Pipelines MACLIBs](#pipelines-maclibs)
 * [Plunger code](#plunger-code)
+  * [Release History](#release-history)
 * [Licenses](#licenses)
   * [CMS Pipelines Runtime Library Distribution license](#cms-pipelines-runtime-library-distribution-license)
   * [Plunger license](#plunger-license)
@@ -64,7 +66,7 @@ expects to exist there.
       * HRC105DS - Extend FSTD/STATEFST for greater compatability with VM/SP
       * Probably more if you want to run the unit tests.
   * HRC405DS - NUCEXT and SUBCOM macro and function fixes. (Required both to
-    build and to run Plunger.)
+    build and to run _Plunger_.)
   * HRC422DS - NUCXTEXT occasionally causes DMSLIO109S. (If you want to run the
     unit tests.)
   * RAP016DS - BALR to TYPLIN through ADMSCWR. (Needed by the CMS and COMMAND
@@ -104,17 +106,18 @@ documentation.
 1. Optionally rebuild `PLUNGER MODULE` from source:
    ```
    VMARC UNPACK PLUNGER VMARC fm * * fm (OLDDATE
-   MKPLUNGE DEBUG
+   MKPLUNGE ( DEBUG
    * or
-   MKPLUNGE NODEBUG
+   MKPLUNGE ( NODEBUG
    ```
 
 ## Use
 
-After installation, it is easy to use CMS Pipelines.  Issue the `PLUNGER
-ENABLE` command to load Plunger and Pipelines into memory, and then issue
-`PIPE` commands exactly like the Pipelines documentation says.  To unload
-Plunger and Pipelines, issue the `PLUNGER DISABLE` command.
+After installation, it is easy to use _CMS Pipelines_.  Issue the `PLUNGER
+ENABLE` command to load _Plunger_ and _Pipelines_ into memory, and then issue
+`PIPE` commands exactly like the _Pipelines_ documentation says.  To unload
+_Plunger_ and _Pipelines_, issue the `NUCXDROP PLUNGER` command.  To unload
+only _Pipelines_, issue the `PLUNGER DISABLE` command.
 
 For example:
 
@@ -125,10 +128,10 @@ pipe literal Hello World! | console
 Hello World!
 Ready;
 ```
-Plunger is relatively small - about 12KB in memory.  Pipelines is not - it
+_Plunger_ is relatively small - about 12KB in memory.  _Pipelines_ is not - it
 consumes 1.1MB when loaded.  There are no options to reduce either of these,
 so you may need to increase the storage size of some of your CMS virtual
-machines to use Pipelines.
+machines to use _Pipelines_.
 
 ## `PLUNGER` command
 
@@ -143,12 +146,11 @@ Pipelines_.
 * `PLUNGER VERSION` - display the version number and build date and time.
 
 `PLUNGER` also responds to `ABEND` and `NUCXDROP` situations via the `SERVICE`
-nucleus extension option.  When dropped via `NUCXDROP`, Plunger also drops
-Pipelines.
+nucleus extension option.  When dropped, _Plunger_ also drops _Pipelines_.
 
 ## Notes
 
-### Pipelines documentation
+### _Pipelines_ documentation
 _CMS Pipelines_ has extensive documentation.  All of it is available in the
 _CMS Pipelines Runtime Library Distribution_, in the `RTDOC VMARC` file.
 Unfortunately, that file is too large to store as-is on VM/370 CMS.  The
@@ -156,13 +158,13 @@ Unfortunately, that file is too large to store as-is on VM/370 CMS.  The
 `splitdoc.bat`, that will read `RTDOC VMARC` and create two subset files.  The
 script requires `vma.exe` from Leland Lucius's excellent
 [VMARC Utility](https://www.homerow.net/zvm/vma/) for Windows and MacOS, which
-frankly every CMS user ought to have.  The `RTDOC1 VMARC` package contains
-documentation that will probably only be useful on a non-CMS system (_i.e._,
-PDF and Postscript files) - in particular, Hartmann's "_CMS Pipelines
-User's Guide and Reference_" (as `PIPELINE.PDF`).  The `RTDOC2 VMARC` package
-contains all the other files, and can be uploaded to CMS and unpacked.
+frankly every CMS user ought to have.  The `RTDOC1 VMARC` package `splitdoc`
+creates contains documentation that will probably only be useful on a non-CMS
+system (_i.e._, PDF and Postscript files) - in particular, Hartmann's "_CMS
+Pipelines User's Guide and Reference_" (as `PIPELINE.PDF`).  The `RTDOC2 VMARC`
+package contains all the other files, and can be uploaded to CMS and unpacked.
 
-### Pipelines HELP
+### _Pipelines_ HELP
 _CMS Pipelines_ has a collection of almost 1,400 HELP files (approximately 15
 3350 cylinders), documenting each command (`HELPCMS`), stage (`HELPPIPE`),
 subcommand (`HELPPIPC`), syntax element (`HELPPIPS`), and message (`HELPMSG`).
@@ -217,6 +219,7 @@ packages:
 
 1. Extract the HELP-file data from `PIPELINE HELPLIB`:
    ```
+   PLUNGER ENABLE
    PIPE HLIB2HIN | > PIPELINE HELPIN fm FIXED
    ```
 
@@ -248,33 +251,44 @@ where CMS users can access them (_e.g._, the CMS `MAINT 19D` HELP disk).
 
 ### Compatibility
 
-_Plunger_ assumes that Pipelines generally works correctly, and that only
+_Plunger_ assumes that _Pipelines_ generally works correctly, and that only
 certain issues exist and need correction.  Those issues are almost entirely in
-the "system interface" portions of Pipelines - specifically, the _device
-driver_ stages, and other areas where Pipelines issues commands to the system
-environment (in this case, CMS or CP).  All of the _device driver_ stages have
-been tested, and either found to work fine, or issues have been logged and in
-almost all cases fixed.  In the process of testing the _device drivers_, no
-_filter_ stages were found to require support from _Plunger_, although no
-significant effort was made to test all _filter_ stages.
+the "system interface" portions of _Pipelines_ - specifically, the _device
+driver_ stages, and other areas where _Pipelines_ issues commands to the system
+environment (in this case, CMS, CP, or Rexx).  All of the _device driver_
+stages have been tested, and either found to work fine, or issues have been
+logged and in almost all cases fixed.  In the process of testing the _device
+drivers_, no _filter_ stages were found to require support from _Plunger_,
+although no significant effort was made to test all _filter_ stages.
 
-The Plunger 0.0.n levels were focused on just getting Pipelines to work at all`
-in VM/370 CMS.  Plunger level 0.1.7 successfully demonstrated simple and
-multistream pipelines with only limited _device driver_ usage.  The 1.1.n
-levels which followed were focused on getting the most important _device
-drivers_ working - console, stack, and disk I/O, and on supporting stages
-written in Rexx (with bREXX release 1.2.0 providing much-needed Exec-in-Storage
-support).  The 0.2.n levels, which were developed after the 0.1.27 level was
-uploaded to GitHub, were focused on finishing testing and repair of the _device
-drivers_.  Plunger level 0.3.xxx completed that effort.
+There is only one known incompatibility with between _Pipelines_ and
+_Pipelines for VM/370_, involved in how the main disk I/O drivers (`<`, `>`,
+`>>`, `<MDSK`, `>MDSK`, and `>>MDSK`) function.  As _CMS Pipelines_ notes in
+the documentation for these stages:
 
-The _Plunger_ automated tests are written in
-[RexxUnit](https://github.com/RossPatterson/RexxUnit), and a copy of the
-`REXXUNIT EXEC` driver is included in the source code.  To run them, simply
-install Plunger, with both the `REXXUNIT EXEC` and the `* REXXUNIT` files, and
-enter `REXXUNIT`.  See the
-[RexxUnit README](https://github.com/RossPatterson/RexxUnit/blob/main/README.md)
-for more information.
+> The fast interface to the file system is bypassed if the bit X'10' is on in
+> offset X'3D' of the FST that is exposed by the FSSTATE macro. Products that
+> compress files on the fly or in other ways intercept the file system macros
+> should turn on this bit to ensure that CMS/TSO Pipelines uses documented
+> interfaces only.
+
+Unfortunately, there are cases where even setting that bit (which _Plunger_
+does) is not sufficient.  Thus _Plunger_ does what _Pipelines_ suggests in a
+companion note:
+
+>  Use `diskslow` if `<mdsk` fails to operate.
+
+ _Plunger_ forces them all to be handled by the MDSKSLOW` stage.  This causes
+ one incompatibility:
+
+   1. The `>` and `>MDSK` stages will now **always** erase their output file
+   before starting, if it already exists, even if the stage exits with a non-0
+   return code.  The correct behavior would be to check to see if the file
+   exists, and if so, "_a utility file is written. When this file has been
+   written successfully, the original file is erased and the utility file
+   renamed to the specified name._"  This might cause a problem for
+   sophisticated pipelines, but it's a small edge-case, and unlikely to cause
+   problems in general.
 
 ### Unsupported stages
 
@@ -333,41 +347,75 @@ they require support that VM/370 CE CMS and CP do not have:
 * `XEDIT`
 * `XMSG`
 
+### Pipelines MACLIBs
+
+The _Pipelines_ distribution comes with two assembler-code macro libraries,
+`FPLGPI MACLIB` and `FPLOM MACLIB`, which are shipped in the `RUNTIME VMARC`
+archive.  Both are in the post-VM/370 `LIBPDS` file format, which VM/370 CMS
+cannot process.  Luckily, _Pipelines_ can read them.  If you want to use them,
+you will need to convert them yourself.  The following pipeline will do the
+job:
+
+```rexx
+Arg Fn .                                /* FPLGPI or FPLOM.           */
+'PIPE (end ? name FIXMAC)',
+   '?listpds' Fn 'MACLIB' ,             /* Get the list of members.   */
+   '|chop 8' ,                          /* Just the names, please.    */
+   '|mems: fanout' ,                    /* Pass them around.          */
+   '|spec /*COPY/ 1 word 1 nextword' ,  /* "name" -> "*COPY name".    */
+   '|pad 80' ,                          /* Make it a card.            */
+   '|merge: faninany' ,                 /* Receive member contents.   */
+   '|> FIXMAC COPY A F 80' ,            /* Write temp file for MACLIB.*/
+   '?mems:' ,                           /* Receive member names.      */
+   '|members' Fn 'MACLIB' ,             /* Extract the members' data. */
+   '|merge:'                            /* Send to FANINANY.          */
+```
+
+The you just:
+
+```rexx
+PLUNGER ENABLE
+FIXMAC FPLname
+MACLIB GEN newfilename FIXMAC
+ERASE FIXMAC COPY
+```
+
 ## _Plunger_ code
 
 _Plunger_ provides a collection of services that _CMS Pipelines_ requires and
 that _VM/370 Community Edition_ does not offer. That includes:
 
-* `ABNEXIT` macro functions - just `ABNEXIT SET` and `ABNEXIT CLR`.
+* `ABNEXIT` macro functions - just `ABNEXIT SET` and `ABNEXIT CLR`, and only
+  capturing program-check interruptions.
 * `CMSCALL` SVC - basic support to map `CMSCALL` macros to CMS's SVC 202.
 * `DMSFNSMC` - a (presumed) synonym for `FINIS`
 * `ESPIE` SVC - basic support to map the MVS `ESPIE` macro to the OS/360 (and
 CMS) `SPIE` macro.
 * `FORM=E` disk I/O macro functions - just remapping plists, not expanding
-limits.  Specifically, `EPOINT`, `ESTATE`, `ESTATEW`, `RDBUF`, and `WRBUF`.
-* EXEC-in-storage functions - a front-end to the `EXEC` command, and the
-`EXECLOAD`, `EXECDROP`, `EXECMAP`, and `EXECSTAT` commands.  If you have
-installed CMS mod HRC100DS, these will not be enabled, and the HRC100DS
-versions will be used instead.
-* `GLOBALV` command - a very limited implementation, just enough for Pipelines'
-use cases.
+  limits.  Specifically, `EPOINT`, `ESTATE`, `ESTATEW`, `RDBUF`, and `WRBUF`.
+* EXEC-in-storage functions - the `EXECLOAD`, `EXECDROP`, `EXECMAP`, and
+  `EXECSTAT` commands and a front-end to the `EXEC` command.  If you have
+  installed CMS mod HRC100DS, these will not be enabled, and the HRC100DS
+  versions will be used instead.
+* `GLOBALV` command - a very limited implementation, just enough for 
+  _Pipelines_' use cases.
 * `LINERD` function - basic support to map `LINERD` macros into `RDTERM`
-equivalents.
+  equivalents.
 * `NUCXLOAD` command - a nearly-complete re-implementation of the VM/SP5 CMS
-`NUCXLOAD` command, including relocation support, but only for `PIPELINE
-MODULE`.  ***This has not been tested with any other MODULE.***
+  `NUCXLOAD` command, including relocation support, but only for `PIPELINE
+  MODULE`.  ***This has not been tested with any other MODULE.***
 * `WAITRD` function - map an undocumented use of the `RDTERM` macro to
-`EDIT=NO`.
+  `EDIT=NO`.
 * Several CPU instructions that Pipelines depends on but that are not part of
-System/370.  These are implemented as their necessity is discovered.  The list
-currently includes:
+  System/370.  These are implemented as their necessity is discovered.  The
+  list currently includes:
   * `AHI` (A7xA) - Add Halfword Immediate, fully implemented.
   * `BRC` (A7x4) - Branch Relative Conditional, fully implemented.
   * `BSM` (0B) - Branch and Set Mode, implemented to always set 24-bit mode.
   * `CHI` (A7xE) - Compare Halfword Immediate, fully implemented.
   * `LAE` (51) - Load Address Extended, implemented exactly as LA (41).
   * `STAM` (9B) - Store Access Multiple, implemented to always store 0 ("home
-space").
+    space").
 
 _Plunger_ also modifies several parts of the _CMS Pipelines_ code in memory,
 altering them while it loads `PIPELINE MODULE` as a nucleus extension.  In
@@ -378,15 +426,41 @@ the code that applies them, are in the `PLUZAP ASSEMBLE` source file, in a form
 that anyone familiar with the CMS `ZAP` command should understand.  The current
 list of ZAPs is:
 * `ZAP001` - Suppress message "_FPLINY1291I The field ADMSCWR in NUCON is
-incorrect; found 00F8C158; display of ABEND information may be in jeopardy._"
+   incorrect; found 00F8C158; display of ABEND information may be in
+   jeopardy._"
 * `ZAP003` - Relocate `NUCMFLAG` in CMS `NUCON`.  See
-https://github.com/s390guy/vm370/issues/97 for details.
+  https://github.com/s390guy/vm370/issues/97 for details.
 * `ZAP004` - Set the "VM/SP" bit in the CP `DIAG x'0000'` response.
 * `ZAP005` - PIPELINE uses a filesystem workarea called `FVS`, but it expects a
-newer version than VM/370 CE's.
+  newer version than VM/370 CE's.
 * `ZAP006` - PIPELINE calls RENAME (NOUPDIR, but VM/370 R6 expects (NOUPDIRT.
 * `ZAP007` - Bypass DMSEXC when calling Rexx stages (pre-dates CMS update
-HRC100DS, and is not applied if HRC100DS is installed on CMS).
+  HRC100DS, and is not applied if HRC100DS is installed on CMS).
+* `ZAP008` - Force the `CMS` and `COMMAND` stages down the CMS 5.5 code path,
+  because we've implemented everything it needs, and the pre-5.5 path fails.
+* `ZAP009` - Make the main disk I/O drivers (`<`, `>`, `>>`, `<MDSK`, `>MDSK`,
+  and `>>MDSK`) go through `MDSKSLOW` instead, because the "fast" interface
+  uses EDF interfaces not present in, and not likely to be added to, VM/370
+  CMS.
+
+### Release History
+The _Plunger_ 0.0.n levels were focused on just getting _Pipelines_ to work at
+all in VM/370 CMS.  _Plunger_ level 0.1.7 successfully demonstrated simple and
+multistream pipelines with only limited _device driver_ usage.  The 0.1.n
+levels which followed were focused on getting the most important _device
+drivers_ working - `console`, `stack`, and disk I/O, and on supporting stages
+written in Rexx (with bREXX release 1.2.0 providing much-needed Exec-in-Storage
+support).  The 0.2.n levels, which were developed after the 0.1.27 level was
+uploaded to GitHub, were focused on finishing testing and repair of the _device
+drivers_.  _Plunger_ level 0.3.xxx completed that effort.
+
+The _Plunger_ automated tests are written in
+[RexxUnit](https://github.com/RossPatterson/RexxUnit), and a copy of the
+`REXXUNIT EXEC` driver is included in the source code.  To run them, simply
+install _Plunger_, with both the `REXXUNIT EXEC` and the `* REXXUNIT` files,
+and enter `REXXUNIT`.  See the
+[RexxUnit README](https://github.com/RossPatterson/RexxUnit/blob/main/README.md)
+for more information.
 
 ## Licenses
 
@@ -504,8 +578,8 @@ contact her at that Princeton email address.
 
 ### _Plunger_ license
 
-_Plunger_ itself is free and unencumbered software and is released into the
-public domain.  The specific licensing text _Plunger_ uses to do this is
-[The Unlicense](https://unlicense.org), which is contained as file
-`UNLICENS.memo` in the `PLUNGER VMARC` package, and which you can and should
+_Plunger_ itself is free, unencumbered, and unwarranteed software and is
+released into the public domain.  The specific licensing text _Plunger_ uses to
+do this is [The Unlicense](https://unlicense.org), which is contained as file
+`UNLICENS MEMO` in the `PLUNGER VMARC` package, and which you can and should
 read in its (brief) entirety.
