@@ -17,45 +17,45 @@ jobs:
           sparse-checkout: cms_update
 
       - name: Start Hercules
+        shell: bash
         run: |
-          mkdir -p /opt/hercules/vm370/io
+          set -euo pipefail
+          mkdir -p /opt/hercules/vm370/dasd_shadows /opt/hercules/vm370/io
           cp hercules.conf /opt/hercules/vm370
           chmod -R ugo+rw /opt/hercules/vm370/*
-          . /opt/hercules/vm370/setup.sh
+          . /usr/local/hercules/setup.sh
           cd /opt/hercules/vm370
           hercules -f /opt/hercules/vm370/hercules.conf -d >/dev/null 2>/dev/null &
 
       - name: Update CMS
+        shell: bash
         run: |
+          set -euo pipefail
           chmod +x cms_update/*.rexx
           echo "Running update_cms.rexx"
           rexx ./cms_update/update_cms.rexx
-        shell: bash
 
       - name: Prepare DASD files
-        run: |
-          herccontrol "detach 6a1" -w "HHCCF047I"
-          herccontrol "detach 6a2" -w "HHCCF047I"
-          herccontrol "detach 6a3" -w "HHCCF047I"
-          herccontrol "detach 6a4" -w "HHCCF047I"
         shell: bash
+        run: |
+          set -euo pipefail
+          herccontrol "quit"
+          sleep 30 # Hercules has a built-in delay after "quit" :-(
 
       - name: Collect DASD files
-        run: |
-          mkdir -p ~/build_work/dasd
-          cp /opt/hercules/vm370/vm50-1.cckd ~/build_work/dasd
-          cp /opt/hercules/vm370/vm50-2.cckd ~/build_work/dasd
-          cp /opt/hercules/vm370/vm50-3.cckd ~/build_work/dasd
-          cp /opt/hercules/vm370/vm50-4.cckd ~/build_work/dasd
-          # The rest don't have MAINT mdisks or system-use space.
-          chmod -R ugo+r ~/build_work/dasd
         shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p ~/build_work/dasd_shadows
+          cp /opt/hercules/vm370/dasd_shadows/* ~/build_work/dasd_shadows
+          chmod -R ugo+r ~/build_work/dasd_shadows
   
-      - name: Upload DASD files
+      - name: Upload DASD changes
         uses: actions/upload-artifact@v7
         with:
           name: DASD
-          path: ~/build_work/dasd
+          path: ~/build_work/dasd_shadows
+          retention-days: 2   # We don't need them after the workflow ends.
 
 #**************************************************#
   build:
@@ -68,18 +68,19 @@ jobs:
       BUILD_TIME:     ${{ steps.build.outputs.BUILD_TIME     }}
       VERSION_STRING: ${{ steps.build.outputs.VERSION_STRING }}
     steps:
-      - name: Get DASD files
+      - name: Get DASD changes
         uses: actions/download-artifact@v8
         with:
           name: DASD
           path: ~/build_work/download
 
-      - name: Update DASD files
-        run: |
-          cd ~/build_work/download
-          mkdir -p /opt/hercules/vm370/io
-          mv *.cckd /opt/hercules/vm370/
+      - name: Update DASD
         shell: bash
+        run: |
+          set -euo pipefail
+          cd ~/build_work/download
+          mkdir -p /opt/hercules/vm370/dasd_shadows /opt/hercules/vm370/io
+          mv *.shadow /opt/hercules/vm370/dasd_shadows
 
       - name: Checkout source
         uses: actions/checkout@v6
@@ -87,43 +88,48 @@ jobs:
           persist-credentials: false
 
       - name: Move source
+        shell: bash
         run: |
+          set -euo pipefail
           mkdir -p ~/build_work/repo
           mv * ~/build_work/repo
-        shell: bash
 
       - name: Start Hercules
+        shell: bash
         run: |
+          set -euo pipefail
           mkdir -p /opt/hercules/vm370/io
           cp ~/build_work/repo/hercules.conf /opt/hercules/vm370
           chmod -R ugo+rw /opt/hercules/vm370/*
-          . /opt/hercules/vm370/setup.sh
+          . /usr/local/hercules/setup.sh
           cd /opt/hercules/vm370
-          ls -l
           hercules -f /opt/hercules/vm370/hercules.conf -d >/dev/null 2>/dev/null &
 
       - name: Build
         id: build
+        shell: bash
         run: |
+          set -euo pipefail
           cd ~/build_work/repo
           chmod +x build.sh mkdoc.sh fixdoc/fixdoc.py
           echo "Running build.sh"
           ./build.sh
-        shell: bash
 
       - name: Get package files
+        shell: bash
         run: |
+          set -euo pipefail
           mkdir -p ~/build_work/upload
           mv /opt/hercules/vm370/io/plunger.vmarc ~/build_work/upload
           cp ~/build_work/repo/plunger.memo ~/build_work/upload
           chmod -R ugo+r ~/build_work/upload
-        shell: bash
 
       - name: Upload package
         uses: actions/upload-artifact@v7
         with:
           name: Plunger
           path: ~/build_work/upload
+          retention-days: 2   # We don't need them after the workflow ends.
 
 #**************************************************#
   test:
@@ -132,18 +138,19 @@ jobs:
     runs-on: [ubuntu-latest]
     container: rosspatterson/vm370:builder
     steps:
-      - name: Get DASD files
+      - name: Get DASD changes
         uses: actions/download-artifact@v8
         with:
           name: DASD
           path: ~/build_work/download
 
-      - name: Update DASD files
-        run: |
-          cd ~/build_work/download
-          mkdir -p /opt/hercules/vm370/io
-          mv *.cckd /opt/hercules/vm370/
+      - name: Update DASD
         shell: bash
+        run: |
+          set -euo pipefail
+          cd ~/build_work/download
+          mkdir -p /opt/hercules/vm370/dasd_shadows /opt/hercules/vm370/io
+          mv *.shadow /opt/hercules/vm370/dasd_shadows
 
       - name: Checkout source
         uses: actions/checkout@v6
@@ -153,17 +160,13 @@ jobs:
             cms_update/upload_file.rexx
             test.sh
 
-      - name: Make dirs
-        run: |
-          mkdir -p ~/build_work/download
-        shell: bash
-
       - name: Move Source
+        shell: bash
         run: |
-          mkdir -p ~/build_work/repo
+          set -euo pipefail
+          mkdir -p ~/build_work/repo ~/build_work/download
           mv * ~/build_work/repo
           ls -l ~/build_work/repo ~/build_work/repo/cms_update
-        shell: bash
 
       - name: Get package
         uses: actions/download-artifact@v8
@@ -172,11 +175,13 @@ jobs:
           path: ~/build_work/downloads
 
       - name: Start Hercules
+        shell: bash
         run: |
+          set -euo pipefail
           mkdir -p /opt/hercules/vm370/io
           cp ~/build_work/repo/hercules.conf /opt/hercules/vm370
           chmod -R ugo+rw /opt/hercules/vm370/*
-          . /opt/hercules/vm370/setup.sh
+          . /usr/local/hercules/setup.sh
           cd /opt/hercules/vm370
           hercules -f /opt/hercules/vm370/hercules.conf -d >/dev/null 2>/dev/null &
 
@@ -186,12 +191,13 @@ jobs:
           BUILD_DATE: ${{needs.build.outputs.BUILD_DATE}}
           BUILD_TIME: ${{needs.build.outputs.BUILD_TIME}}
           VERSION_STRING: ${{needs.build.outputs.VERSION_STRING}}
+        shell: bash
         run: |
+          set -euo pipefail
           cd ~/build_work/repo
           chmod +x test.sh
           echo "Running test.sh"
           ./test.sh "$VERSION_STRING" "$BUILD_DATE" "$BUILD_TIME"
-        shell: bash
 
 #**************************************************#
   release:
