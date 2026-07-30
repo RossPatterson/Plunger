@@ -43,9 +43,17 @@ BLDTIME  DC    CL8'&SYSTIME'
          TITLE 'CMDDEBUG - Turn debugging on or off.'
          PUSH  USING
 CMDDEBUG DS    0H
-         ICM   R10,B'1111',NUCPLUPT  Got a PRMSECT?
-         BZ    DBGENPRM       No, can't do anything.
          USING PRMSECT,R10
+         ICM   R10,B'1111',NUCPLUPT  Got a PRMSECT?
+         BNZ   DBGHVPRM       Yes, skip.
+         LA    R0,(PRMLEN+7)/8  No, get storage for
+         DMSFREE DWORDS=(0)   PRMSECT.
+         LTR   R15,R15        All well?
+         BNZ   DBGERPRM       No, error.
+         LR    R10,R1
+         ST    R10,NUCPLUPT   Set our pointer.
+         XC    0(PRMLEN,R10),0(R10)  Clear it.
+DBGHVPRM DS    0H
          CLC   16(8,R3),=8X'FF'  Just "DEBUG"?
          BE    DBGSHOW        Yes, show current state.
          LA    R4,24(,R3)
@@ -81,8 +89,7 @@ DBGSHOW  DS    0H
          BAL   R14,MSG009     "PLUNGER debugging is <state>"
          B     PCMDEXIT       Exit.
          SPACE 3
-DBGENPRM DS    0H
-         BAL   R14,MSG008     "PLUNGER is not enabled."
+DBGERPRM BAL   R14,MSG011     "Unable to obtain PRMSECT storage"
          B     PCMDEXIT       Exit.
          POP   USING
          TITLE 'CMDDISAB / CMDRESET - Clean up prior to being dropped.'
@@ -199,6 +206,9 @@ ENABEXST SVC   202            Does CMS have EXIS support?
          S     R15,=A(X'20000')  relocated
          AR    R15,R12              NUCXLOAD
          ST    R15,SCBENTR             entrypoint.
+         TM    PRMFLAG1,PRMF1DBG  Are we debugging?
+         BZ    *+8            No, skip.
+         OI    SCBUFLAG,SCBUFDBG  Yes, tell NUCXLOAD that.
          DROP  R2
          LR    R12,R15        Set R12 base too.
          DROP  R12
@@ -429,5 +439,7 @@ NUCPLUPT DS    A              -> PLUNGER PRMSECT.
          EJECT ,
          REGEQU ,
          SCBLOCK ,
+* Flags in SCBUFLAG for RPSNXL:
+SCBUFDBG EQU   X'80'          - Debugging is on.
          USERSAVE ,
          END   ,

@@ -17,6 +17,7 @@
  &1 &2 PLUNMAC  EXEC     A &3 &4 &5 &6 &7 &8 &9 &10
  &1 &2 REXXUNIT EXEC     A &3 &4 &5 &6 &7 &8 &9 &10
  &1 &2 PIPE     HELPTASK A &3 &4 &5 &6 &7 &8 &9 &10
+ &1 &2 PLUNGER  HELP$CM  A &3 &4 &5 &6 &7 &8 &9 &10
 *							&1 &2 PLUCMD   LISTING  A &3 &4 &5 &6 &7 &8 &9 &10
 *							&1 &2 PLUFNC   LISTING  A &3 &4 &5 &6 &7 &8 &9 &10
 *							&1 &2 PLUMAI   LISTING  A &3 &4 &5 &6 &7 &8 &9 &10

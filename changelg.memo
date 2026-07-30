@@ -1,3 +1,5 @@
+      - Allow PLUNGER DEBUG ON|OFF before PLUNGER ENABLE and pass the debug
+        status to NUCXLOAD.
       - Make build process use less GitHub Actions storage.
       - Check ADMSCWR and warn if not set.
 I0003 - Make REXX stage work with stream programs.

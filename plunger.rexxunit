@@ -76,11 +76,9 @@ TestDebugNone:
 
 TestDebugNotEnabled:
    Ref.0 = 1
-   Ref.1 = 'PLUCMD008E PLUNGER is not enabled.'
-   Call NoError 'WITHSTEM OUTPUT O. COMMAND PLUNGER DEBUG'
-   $RC = RC
+   Ref.1 = 'PLUCMD009I PLUNGER debugging is off.'
+   'WITHSTEM OUTPUT O. COMMAND PLUNGER DEBUG'
    Call AssertStemEqual 'Ref.', 'O.'
-   Call AssertEqual 8, $RC
    Return
 
 TestDisable:

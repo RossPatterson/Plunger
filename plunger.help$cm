@@ -1,0 +1,32 @@
+PLUNGER                                                   CMS Nucleus extension
+
+Use the PLUNGER command to control use of CMS Pipelines.
+
++-----------------------------------------------------------------------------+
+|                                                                             |
+| >>--PLUNGER---.--DEBUG--.-------.--.--><                                    |
+|               |         +--OFF--+  |                                        |
+|               |         '--ON---'  |                                        |
+|               +--DISABLE-----------+                                        |
+|               +--ENABLE------------+                                        |
+|               '--VERSION-----------'                                        |
+|                                                                             |
++-----------------------------------------------------------------------------+
+
+where:
+
+DEBUG    on its own specifies to display the current debugging status for
+         Plunger.
+
+DEBUG OFF specifies to stop debugging of Plunger.
+
+DEBUG ON  specifies to start debugging of Plunger.
+
+DISABLE  specifies to disable use of CMS Pipelines, and unload Plunger and
+         CMS Pipelines from memory.
+
+ENABLE   specifies to load Plunger and CMS Pipelines into memory, and enable
+         use of CMS Pipelines.
+
+VERSION specifies to display the version of Plunger in use.
+

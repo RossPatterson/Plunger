@@ -378,12 +378,10 @@ RDRLIOER C     R15,=F'12'     End-of-file?
 RELOC    DS    0H
          TM    WRKFLAG1,WRKF1DBG  Are we debugging?
          BZ    RELONHDR       No, skip.
-         AGO   .RELO01
-         LINEDIT TEXT='RPSNXL901D RLDitem_ ItemAddr ValueBef OldBase_ L*
-               oadAddr ValueAft',                                      *
+         LINEDIT TEXT='RPSNXL901D RLD# RLDitem_ ItemAddr ValueBef OldBa*
+               se_ LoadAddr ValueAft',                                 *
                DISP=ERRMSG,                                            *
                MF=(E,WRKLEDPL)
-.RELO01  ANOP  ,
 RELONHDR DS    0H
          L     R2,WRKBUFAD    Get relocation data address.
          L     R3,WRKRLDLN    Get number of
@@ -407,6 +405,9 @@ RELOLOOP L     R4,0(,R2)      Get RLD item
          ICM   R0,*-*,0(R5)      address
          EX    R4,*-4               from GENMOD.
          ST    R0,WRKTEMP1    Save for message.
+         LR    R15,R0         Separate
+         N     R0,=X'7FFFFFFF'   address and
+         N     R15,=X'80000000'     addressing mode.
          S     R0,WRKMODST    Turn it into an offset.
          BM    RELOSKIP       Not inside MODULE, skip.
          CR    R0,R7          Inside MODULE?
@@ -414,36 +415,41 @@ RELOLOOP L     R4,0(,R2)      Get RLD item
          LR    R1,R8          Get relocation distance.
          ST    R1,WRKTEMP2    Save for message.
          AR    R0,R1          Relocate the address.
+         OR    R0,R15         Put addressing mode bit back.
          ST    R0,WRKTEMP3    Save for message.
          STCM  R0,*-*,0(R5)   Put it
          EX    R4,*-4            back.
          TM    WRKFLAG1,WRKF1DBG  Are we debugging?
          BZ    RELONDBG       No, skip.
-         AGO   .RELO02
          STM   R7,R9,WRKTEMP4
          LM    R7,R9,WRKTEMP1
-*              RLDitem_ ItemAddr ValueBef OldBase_ LoadAddr ValueAft
-         LINEDIT TEXT='RPSNXL902D ........ ........ ........ ........ .*
-               ....... ........',                                      *
-               SUB=(HEXA,0(R2),HEX,(R5),HEX,(R7),HEX,(R6),HEX,(R8),    *
-               HEX,(R9)),                                              *
+         LR    R10,R2         Get
+         S     R10,WRKBUFAD      item
+         SRL   R10,2                number.
+*            RLD# RLDitem_ ItemAddr ValueBef OldBase_ LoadAddr ValueAft
+         LINEDIT TEXT='RPSNXL902D .... ........ ........ ........ .....*
+               ... ........ ........',                                 *
+               SUB=(HEX,(R10),HEXA,0(R2),HEX,(R5),HEX,(R7),HEX,(R6),   *
+               HEX,(R8),HEX,(R9)),                                     *
                DISP=ERRMSG,                                            *
                MF=(E,WRKLEDPL)
          LM    R7,R9,WRKTEMP4
-.RELO02  ANOP  ,
          B     RELONDBG
 RELOSKIP DS    0H
          TM    WRKFLAG1,WRKF1DBG  Are we debugging?
          BZ    RELONDBG       No, skip.
-         AGO   .RELO03
          ST    R7,WRKTEMP4
          L     R7,WRKTEMP1
-         LINEDIT TEXT='RPSNXL903D ........ ........ ........ skipped', *
-               SUB=(HEXA,0(R2),HEX,(R5),HEX,(R7)),                     *
+         LR    R10,R2         Get
+         S     R10,WRKBUFAD      item
+         SRL   R10,2                number.
+*            RLD# RLDitem_ ItemAddr ValueBef
+         LINEDIT TEXT='RPSNXL903D .... ........ ........ ........ skipp*
+               ed',                                                    *
+               SUB=(HEX,(R10),HEXA,0(R2),HEX,(R5),HEX,(R7)),           *
                DISP=ERRMSG,                                            *
                MF=(E,WRKLEDPL)
          L     R7,WRKTEMP4
-.RELO03  ANOP  ,
 RELONDBG DS    0H
          LA    R2,4(,R2)      Go do the
          BCT   R3,RELOLOOP       next one.
@@ -526,9 +532,6 @@ WRKLEDPL LINEDIT MF=L,MAXSUBS=5  LINEDIT plist
          DS    0D
 WRKLEN   EQU   *-WRKSECT
 WRKLEND  EQU   (WRKLEN+7)/8
-         SPACE 3
-* Flags in SCBUFLAG:
-SCBUFDBG EQU   X'80'          - Debugging is on.
          TITLE 'MDREC - MODULE file header record from DMSZAP.'
 MDREC    DSECT ,
 MDNUCON  DS    0XL40          Mapped by NUCON, starting at STRTADDR
@@ -565,4 +568,6 @@ MDRECLEN EQU   *-MDREC        length in bytes
          FSTD  ,
          REGEQU ,
          SCBLOCK ,
+* Flags in SCBUFLAG:
+SCBUFDBG EQU   X'80'          - Debugging is on.
          END   ,
