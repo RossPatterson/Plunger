@@ -169,7 +169,7 @@ _CMS Pipelines_ has a collection of almost 1,400 HELP files (approximately 15
 3350 cylinders), documenting each command (`HELPCMS`), stage (`HELPPIPE`),
 subcommand (`HELPPIPC`), syntax element (`HELPPIPS`), and message (`HELPMSG`).
 All of it is available in the _CMS Pipelines Runtime Library Distribution_, in
-the `RUNTIME VMARC` package, but it must be extracted and installed to
+the `RUNTIME VMARC` package, but it must be extracted and installed to be
 useful on VM/370. The process to do so is documented at the
 [_CMS Pipelines Runtime Distribution_ website](http://vm.marist.edu/~pipeline/install.html),
 and the following recommended procedure is based upon it:
@@ -257,14 +257,14 @@ the "system interface" portions of _Pipelines_ - specifically, the _device
 driver_ stages, and other areas where _Pipelines_ issues commands to the system
 environment (in this case, CMS, CP, or Rexx).  All of the _device driver_
 stages have been tested, and either found to work fine, or issues have been
-logged and in almost all cases fixed.  In the process of testing the _device
-drivers_, no _filter_ stages were found to require support from _Plunger_,
-although no significant effort was made to test all _filter_ stages.
+logged and fixed.  In the process of testing the _device drivers_, no _filter_
+stages were found to require support from _Plunger_, although no significant
+effort was made to test all _filter_ stages.
 
 There is only one known incompatibility with between _Pipelines_ and
-_Pipelines for VM/370_, involved in how the main disk I/O drivers (`<`, `>`,
-`>>`, `<MDSK`, `>MDSK`, and `>>MDSK`) function.  As _CMS Pipelines_ notes in
-the documentation for these stages:
+_Pipelines_ with _Plunger_, involved in how the main disk I/O drivers (`<`,
+`>`, `>>`, `<MDSK`, `>MDSK`, and `>>MDSK`) function.  As _CMS Pipelines_ notes
+in the documentation for these stages:
 
 > The fast interface to the file system is bypassed if the bit X'10' is on in
 > offset X'3D' of the FST that is exposed by the FSSTATE macro. Products that
@@ -278,7 +278,7 @@ companion note:
 
 >  Use `diskslow` if `<mdsk` fails to operate.
 
- _Plunger_ forces them all to be handled by the MDSKSLOW` stage.  This causes
+ _Plunger_ forces them all to be handled by the `MDSKSLOW` stage.  This causes
  one incompatibility:
 
    1. The `>` and `>MDSK` stages will now **always** erase their output file
@@ -397,7 +397,7 @@ CMS) `SPIE` macro.
   `EXECSTAT` commands and a front-end to the `EXEC` command.  If you have
   installed CMS mod HRC100DS, these will not be enabled, and the HRC100DS
   versions will be used instead.
-* `GLOBALV` command - a very limited implementation, just enough for 
+* `GLOBALV` command - a very limited implementation, just enough for
   _Pipelines_' use cases.
 * `LINERD` function - basic support to map `LINERD` macros into `RDTERM`
   equivalents.

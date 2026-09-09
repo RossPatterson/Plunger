@@ -1,3 +1,4 @@
+I0008 - DELAY stage loops forever.
 I0009 - DMSITP141T FIXED-POINT DIVIDE EXCEPTION OCCURRED AT DBA8B8 IN ROUTINE
         PIPE.
       - Add tests for device drivers that already work, and for those than

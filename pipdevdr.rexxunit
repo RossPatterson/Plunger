@@ -25,6 +25,16 @@ TestTeardown:
    If RC = 0 then Call NoError 'NUCXDROP PLUNGER'
    Return
 
+TestBeat:
+   Ref.0 = 4
+   Ref.1 = 'beat 4'
+   Ref.2 = 'beat 4'
+   Ref.3 = 'beat 4'
+   Ref.4 = 'delay +15'
+   'PIPE (end ?) literal +15| delay | change //delay / | a: beat 4 /beat 4/ | b: faninany | stem Out. ? a: | b:'
+   Call AssertStemIdentical 'Ref.', 'Out.'
+   Return
+
 TestCommand:
    Parse upper source . . MyFn MyFt .
    'PIPE command LISTFILE' MyFn MyFt '| stem Out.'
@@ -61,6 +71,13 @@ TestCms:
 TestCp:
    'EXECIO * CP ( STEM Ref. STRING Q V CONS'
    'PIPE CP QUERY V CONS | stem Out.'
+   Call AssertStemIdentical 'Ref.', 'Out.'
+   Return
+
+TestDelay:
+   Ref.0 = 1
+   Ref.1 = '...+15 '
+   'PIPE literal +15 | delay | change //.../ | stem Out.'
    Call AssertStemIdentical 'Ref.', 'Out.'
    Return
 
