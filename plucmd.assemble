@@ -45,15 +45,8 @@ BLDTIME  DC    CL8'&SYSTIME'
 CMDDEBUG DS    0H
          USING PRMSECT,R10
          ICM   R10,B'1111',NUCPLUPT  Got a PRMSECT?
-         BNZ   DBGHVPRM       Yes, skip.
-         LA    R0,(PRMLEN+7)/8  No, get storage for
-         DMSFREE DWORDS=(0)   PRMSECT.
-         LTR   R15,R15        All well?
-         BNZ   DBGERPRM       No, error.
-         LR    R10,R1
-         ST    R10,NUCPLUPT   Set our pointer.
-         XC    0(PRMLEN,R10),0(R10)  Clear it.
-DBGHVPRM DS    0H
+         BNZ   *+8            Yes, skip.
+         BAL   R14,PRMFREE    No, got make one.
          CLC   16(8,R3),=8X'FF'  Just "DEBUG"?
          BE    DBGSHOW        Yes, show current state.
          LA    R4,24(,R3)
@@ -87,9 +80,6 @@ DBGSHOW  DS    0H
          BO    *+8            Yes, skip.
          LA    R5,=CL3'off'   No, say otherwise.
          BAL   R14,MSG009     "PLUNGER debugging is <state>"
-         B     PCMDEXIT       Exit.
-         SPACE 3
-DBGERPRM BAL   R14,MSG011     "Unable to obtain PRMSECT storage"
          B     PCMDEXIT       Exit.
          POP   USING
          TITLE 'CMDDISAB / CMDRESET - Clean up prior to being dropped.'
@@ -137,11 +127,8 @@ DISANPIP DS    0H
 DISANOFN DS    0H
          SPACE 3
          LTR   R1,R10         Got a PRMSECT?
-         BZ    DISANPRM       No PRMSECT to return.
-         LA    R0,(PRMLEN+7)/8  Return our
-         DMSFRET DWORDS=(0),LOC=(1)   PRMSECT.
-         XC    NUCPLUPT,NUCPLUPT
-DISANPRM DS    0H
+         BZ    *+8            No, skip.
+         BAL   R14,PRMFRET    Yes, go return it.
          B     PCMDEXOK
          SPACE 3
 DISAERDR BAL   R14,MSG004     "Error dropping <name>"
@@ -165,13 +152,7 @@ ENABNPRM DS    0H
          SPACE 3
          MVI   NUCCFA,0       Let Pipelines figure out machine type.
          SPACE 3
-         LA    R0,(PRMLEN+7)/8  Get storage for
-         DMSFREE DWORDS=(0)   PRMSECT.
-         LTR   R15,R15        All well?
-         BNZ   ENABERPR       No, error.
-         LR    R10,R1
-         ST    R10,NUCPLUPT   Set our pointer.
-         XC    0(PRMLEN,R10),0(R10)  Clear it.
+         BAL   R14,PRMFREE    No, got make one.
 ENABGO   DS    0H
          MVC   PRMPLUNG,SCBXORG  Set our module's address.
          SPACE 3
@@ -277,9 +258,6 @@ ENABNPIP DS    0H
          SPACE 3
          B     PCMDEXOK
          SPACE 3
-ENABERPR BAL   R14,MSG011     "Unable to obtain PRMSECT storage"
-         B     PCMDEXIT       Exit.
-         SPACE 3
 ENABERNL BAL   R14,MSG012     "Error <n> from NUCXLOAD PIPELINE."
          B     PCMDEXIT       Exit.
          SPACE 3
@@ -306,6 +284,44 @@ CMDVERSN DS    0H
          BAL   R14,MSG006     "Plunger version <n> dated <d> <t> ..."
          B     PCMDEXIT       Exit.
          DROP  R11
+         TITLE 'Subroutines'
+         PUSH  USING
+         USING PRMSECT,R10
+PRMFREE  DS    0H             Build the PRMSECT.
+         L     R0,=A((PRMLEN+7)/8)  Get storage for
+         DMSFREE DWORDS=(0),TYPE=NUCLEUS  PRMSECT.
+         LR    R10,R1
+         ST    R10,NUCPLUPT   Set our pointer.
+         XC    0(PRMLEN,R10),0(R10)  Clear it.
+         L     R0,NUCXFRES    Account
+         A     R0,=A((PRMLEN+7)/8)  for
+         ST    R0,NUCXFRES          it.
+         BR    R14            Go home.
+         POP   USING
+         EJECT ,
+         PUSH  USING
+         USING PRMSECT,R10
+PRMFRET  DS    0H             Return the PRMSECT.
+         SPACE 1
+         OC    PRMSVCNP,PRMSVCNP  Do we still have CMS's SVC-new PSW?
+         BZ    *+10           No, skip.
+         MVC   SVCNPSW,PRMSVCNP  Yes, restore it.
+         SPACE 1
+         OC    PRMPGMNP,PRMPGMNP  Do we still have CMS's PGM-new PSW?
+         BZ    *+10           No, skip.
+         MVC   PGMNPSW,PRMPGMNP  Yes, restore it.
+         SPACE 1
+         XC    PRMSVCNP,PRMSVCNP  Forget
+         XC    PRMPGMNP,PRMPGMNP     them.
+         L     R0,=A((PRMLEN+7)/8)  Return our
+         DMSFRET DWORDS=(0),LOC=(1)   PRMSECT.
+         XC    NUCPLUPT,NUCPLUPT
+         L     R0,NUCXFRES       Account
+         S     R0,=A((PRMLEN+7)/8)  for
+         ST    R0,NUCXFRES             it.
+         SR    R10,R10          Forget where it was.
+         BR    R14
+         POP   USING
          TITLE 'Messages.'
 MSG002   DS    0H             No WRKSECT on this one, so no MF=E.
          LINEDIT TEXT='PLUCMD002E Cannot obtain workarea',DISP=ERRMSG
@@ -370,13 +386,6 @@ MSG010   DS    0H
          LINEDIT TEXT='PLUCMD010E PLUNGER is already enabled',         *
                DISP=ERRMSG,MF=(E,WRKLEDPL)
          LA    R15,10
-         BR    R14
-         SPACE 3
-MSG011   DS    0H
-         LINEDIT TEXT='PLUCMD011E Unable to obtain PRMSECT storage',   *
-               DISP=ERRMSG,                                            *
-               MF=(E,WRKLEDPL)
-         LA    R15,11
          BR    R14
          SPACE 3
 MSG012   DS    0H

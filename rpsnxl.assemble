@@ -301,9 +301,9 @@ LOADMOD  DS    0H
          SRL   R0,3                 doublewords.
          TM    WRKFLAG1,WRKF1SYS  SYSTEM option?
          BZ    LDMDUSER       No, use user storage.
-         DMSFREE DWORDS=(0),ERR=LDMDERST,TYPE=USER,TYPCALL=BALR
+         DMSFREE DWORDS=(0),ERR=LDMDERST,TYPE=NUCLEUS,TYPCALL=BALR
          B     LDMDSTOR
-LDMDUSER DMSFREE DWORDS=(0),ERR=LDMDERST,TYPE=NUCLEUS,TYPCALL=BALR
+LDMDUSER DMSFREE DWORDS=(0),ERR=LDMDERST,TYPE=USER,TYPCALL=BALR
 LDMDSTOR ST    R1,WRKMODAD    Save module address.
          L     R0,WRKMODNT    Relocate
          AR    R0,R1             entrypoint

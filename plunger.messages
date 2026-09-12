@@ -8,7 +8,7 @@ PLUCMD007E Bad parameter ........ for ........ command
 PLUCMD008E PLUNGER is not enabled
 PLUCMD009I PLUNGER debugging is ... ...
 PLUCMD010E PLUNGER is already enabled
-PLUCMD011E Unable to obtain PRMSECT storage
+... deleted in v0.2.37 ... PLUCMD011E Unable to obtain PRMSECT storage
 PLUCMD012E Error ........ from NUCXLOAD PIPELINE
 PLUCMD013E Error ........ from PIPMOD INSTALL
 PLUCMD014I PIPMOD: PER I R ......:......

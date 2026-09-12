@@ -72,8 +72,17 @@ PLUFNCUN $ENTER ,
          ICM   R10,B'1111',NUCPLUPT
          BZ    UNLDNPSW
          USING PRMSECT,R10
-         MVC   SVCNPSW,PRMSVCNP  Restore CMS's SVC-new PSW.
-         MVC   PGMNPSW,PRMPGMNP  Restore CMS's PGM-new PSW.
+         SPACE 1
+         OC    PRMSVCNP,PRMSVCNP  Do we still have CMS's SVC-new PSW?
+         BZ    *+10           No, skip.
+         MVC   SVCNPSW,PRMSVCNP  Yes, restore it.
+         SPACE 1
+         OC    PRMPGMNP,PRMPGMNP  Do we still have CMS's PGM-new PSW?
+         BZ    *+10           No, skip.
+         MVC   PGMNPSW,PRMPGMNP  Yes, restore it.
+         SPACE 1
+         XC    PRMSVCNP,PRMSVCNP  Forget
+         XC    PRMPGMNP,PRMPGMNP     them.
 UNLDNPSW DS    0H
          SPACE 3
          TM    PRMFLAG1,PRMF1EXS  Does CMS have EXIS support?
