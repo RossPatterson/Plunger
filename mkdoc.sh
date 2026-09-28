@@ -16,6 +16,7 @@ python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 pandoc --from gfm-smart --to plain --filter ./fixdoc.py --columns 79 < ../README.md > ../plunger.memo
+pandoc --from gfm-smart --to html < ../README.md > ../README.html
 deactivate
 cd ..
 

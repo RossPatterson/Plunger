@@ -4,10 +4,9 @@
 Trace C
 'RMDIR /q /s fixdoc\.venv 2>NUL:'
 
-Call CD 'fixdoc'
-'py -m venv .venv'
-' .venv\Scripts\activate.bat & pip install -r requirements.txt'
-' .venv\Scripts\activate.bat & pandoc --from gfm-smart --to plain --filter .\fixdoc.py --columns 79 < ..\README.md > ..\plunger.memo'
-Call CD ..
+'cd fixdoc & py -m venv .venv'
+'cd fixdoc & .venv\Scripts\activate.bat & pip install -r requirements.txt'
+'cd fixdoc & .venv\Scripts\activate.bat & pandoc --from gfm-smart --to plain --filter .\fixdoc.py --columns 79 < ..\README.md > ..\plunger.memo'
+'cd fixdoc & .venv\Scripts\activate.bat & pandoc --from gfm-smart --to html < ..\README.md > ..\README.html'
 
 'RMDIR /q /s fixdoc\.venv 2>NUL:'

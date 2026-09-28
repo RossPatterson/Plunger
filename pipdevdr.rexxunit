@@ -296,6 +296,32 @@ TestEmsgOn:
    Call AssertIdentical Msg, O.1
    Return
 
+TestLdrtbls:
+   Call Erase 'TLDT * A'
+   I=0
+   I=I+1; A.I = "TLDT     START X'20000'"
+   I=I+1; A.I = "         USING *,12"
+   I=I+1; A.I = "         LR    12,15"
+   I=I+1; A.I = "         LR    11,14"
+   I=I+1; A.I = "*        WRTERM 'Hi from TestLdrtbls!'"
+   I=I+1; A.I = "         CNOP  0,4"
+   I=I+1; A.I = "         BAL   1,DOIT"
+   I=I+1; A.I = "         DC    CL8'TYPLIN'"
+   I=I+1; A.I = "         DC    X'01',AL3(MESSAGE)"
+   I=I+1; A.I = "         DC    C'B',X'00',AL2(L'MESSAGE)"
+   I=I+1; A.I = "DOIT     SVC   202"
+   I=I+1; A.I = "         DC    AL4(1)"
+   I=I+1; A.I = "         BR    11"
+   I=I+1; A.I = "MESSAGE  DC    C'Hi from TestLdrtbls!'"
+   I=I+1; A.I = "         END"
+   A.0 = I
+   Call Assemble 'A.', 'TLDT'
+   'LOAD TLDT'
+   'PIPE ldrtbls tLdT'
+   Say 'Expected "Hi from TestLdrtbls!", hope you got it.'
+   Call Erase 'TLDT * A'
+   Return
+
 TestListpds:
    MemberNames = 'FSREAD FSWRITE'
    'PIPE listpds cmslib maclib s | stem out.'

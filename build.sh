@@ -51,9 +51,13 @@ herccontrol "/COPYFILE * MACRO    A (RECFM F LRECL 80" -w "^Ready"
 herccontrol "/MKPLUNGE" -w "^Ready;"
 
 # Make the package VMARC file.
+# Add all the AUX* and UPD* files to the list of files to package.  LISTFILE
+# doesn't have (ARGS, but we just built Plunger, so we've got Pipelines:
+herccontrol "/PLUNGER ENABLE"
+herccontrol "/PIPE COMMAND LISTFILE * AUX* A (FMODE | APPEND COMMAND LISTFILE * UPD* A (FMODE | INSERT / &1 &2 / BEFORE | INSERT / &3 &4 &5 &6 &7 &8 &9 &10/ AFTER | PAD 80 | >> PKGFILES EXEC A"
+herccontrol "/NUCXDROP PLUNGER"
 herccontrol "devinit 00d /opt/hercules/vm370/io/plunger.vmarc" -w "^HHCPN098I"
 sleep 5	# Because "devinit" is timing-related :-(
-# Later we'll be more explicit, for now just include everything.
 herccontrol "/PKGFILES VMARC PACK PLUNGER VMARC A (APPEND NOTRACE" -w "^Ready;"
 herccontrol "/PUNCH PLUNGER VMARC A (NOHEADER" -w "^Ready;"
 herccontrol "devinit 00d dummy" -w "^HHCPN098I"

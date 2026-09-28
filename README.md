@@ -59,29 +59,41 @@ believe it is running in VM/SP CMS, and provides services that _Pipelines_
 expects to exist there.
 
 ## Pre-requisites
-  * VM/370 Community Edition 1.1.2
-    * or a VM/370 R6 with at least the following updates:
-      * HRC015DS - Prevent UPDATE from failing when the filesystem API is
-        updated
-      * HRC105DS - Extend FSTD/STATEFST for greater compatability with VM/SP
+  * CMS Pipelines Runtime Library Distribution (see
+    [Installation](#installation) below)
+  * [VM/370 Community Edition 1.1.2](https://vm370.org/VM/V1R1.2)
+    * or a VM/370 R6 derivative with at least the following updates:
+      * CMS update HRC015DS - Prevent UPDATE from failing when the filesystem
+        API is updated
+      * CMS update HRC105DS - Extend FSTD/STATEFST for greater compatability
+        with VM/SP
       * Probably more if you want to run the unit tests.
-  * HRC405DS - NUCEXT and SUBCOM macro and function fixes. (Required both to
-    build and to run _Plunger_.)
-  * HRC422DS - NUCXTEXT occasionally causes DMSLIO109S. (If you want to run the
-    unit tests.)
-  * RAP016DS - BALR to TYPLIN through ADMSCWR. (Needed by the CMS and COMMAND
-    stages, and maybe others).
-  * bREXX version 1.2.0 or higher - support for in-storage Rexx programs.
-    (Needed by the Rexx-related stages.)
+  * Additional CMS updates:
+    * CMS update [HRC405DS](https://groups.io/g/h390-vm/files/hrc405ds_v4.vmarc) -
+      NUCEXT and SUBCOM macro and function fixes. (Required both to build and
+      to run _Plunger_.)
+    * CMS update [HRC422DS](https://groups.io/g/h390-vm/files/hrc422ds.vmarc) -
+      NUCXTEXT occasionally causes DMSLIO109S. (Optional, If you want to run
+      the unit tests.)
+    * CMS update [HRC103DS](https://groups.io/g/h390-vm/files/hrc103ds_v1.vmarc) -
+      BALR to TYPLIN through ADMSCWR. (Required by the CMS and COMMAND stages,
+      and maybe others).
+  * [bREXX version 1.2.1](https://github.com/RossPatterson/CMS-370-BREXX/releases/tag/v1.2.1)
+    or higher - support for in-storage Rexx programs, and for long host
+	commands.  (Required by the Rexx-related stages.)
 
 ## Installation
 
 1. Get the distribution files from the [_CMS Pipelines Runtime Library
-Distribution_](http://vm.marist.edu/~pipeline/index.html#Runtime). You want the
-"All executables" and "All documentation" archive (_i.e._, `VMARC`) files.
+Distribution_](http://vm.marist.edu/~pipeline/index.html#Runtime), or from the
+copy at
+[the Internet Archive](https://web.archive.org/web/20240802050250/http://vm.marist.edu/~pipeline/index.html#Runtime).
+You want the "All executables" and "All documentation" archive files, `RUNTIME
+VMARC` and `RTDOC VMARC` respectively.
 
 1. Get the _Plunger_ package from
-[GitHub](https://github.com/RossPatterson/Plunger/releases).
+[GitHub](https://github.com/RossPatterson/Plunger/releases), and unzip it to
+get `PLUNGER MEMO` (a copy of this file) and `PLUNGER VMARC`.
 
 1. Upload the `RUNTIME VMARC` and `PLUNGER VMARC` files to CMS in binary as
 RECFM F and LRECL 80.
@@ -154,15 +166,16 @@ nucleus extension option.  When dropped, _Plunger_ also drops _Pipelines_.
 _CMS Pipelines_ has extensive documentation.  All of it is available in the
 _CMS Pipelines Runtime Library Distribution_, in the `RTDOC VMARC` file.
 Unfortunately, that file is too large to store as-is on VM/370 CMS.  The
-`PLUNGER VMARC` package includes a Microsoft Windows script file,
-`splitdoc.bat`, that will read `RTDOC VMARC` and create two subset files.  The
-script requires `vma.exe` from Leland Lucius's excellent
-[VMARC Utility](https://www.homerow.net/zvm/vma/) for Windows and MacOS, which
-frankly every CMS user ought to have.  The `RTDOC1 VMARC` package `splitdoc`
-creates contains documentation that will probably only be useful on a non-CMS
-system (_i.e._, PDF and Postscript files) - in particular, Hartmann's "_CMS
-Pipelines User's Guide and Reference_" (as `PIPELINE.PDF`).  The `RTDOC2 VMARC`
-package contains all the other files, and can be uploaded to CMS and unpacked.
+`PLUNGER VMARC` package includes script files for Microsoft Windows
+(`splitdoc.bat`) and Linux (`splitdoc.sh`) that will read `RTDOC VMARC` and
+create two subset files.  The scripts require `vma` from Leland Lucius's
+excellent [VMARC Utility](https://www.homerow.net/zvm/vma/) for Windows, Linux,
+and MacOS, which frankly every CMS user ought to have.  The `RTDOC1 VMARC`
+package `splitdoc` creates contains documentation that will probably only be
+useful on a non-CMS system (_i.e._, PDF and Postscript files) - in particular,
+Hartmann's "_CMS Pipelines User's Guide and Reference_" (as `PIPELINE.PDF`).
+The `RTDOC2 VMARC` package contains all the other files, and can be uploaded to
+CMS and unpacked.
 
 ### _Pipelines_ HELP
 _CMS Pipelines_ has a collection of almost 1,400 HELP files (approximately 15
@@ -172,6 +185,8 @@ All of it is available in the _CMS Pipelines Runtime Library Distribution_, in
 the `RUNTIME VMARC` package, but it must be extracted and installed to be
 useful on VM/370. The process to do so is documented at the
 [_CMS Pipelines Runtime Distribution_ website](http://vm.marist.edu/~pipeline/install.html),
+(or the copy at
+[the Internet Archive](https://web.archive.org/web/20260105014713/http://vm.marist.edu/~pipeline/install.html))
 and the following recommended procedure is based upon it:
 
 1. Extract the necessary files from the `RUNTIME VMARC` and `PLUNGER VMARC`
@@ -278,8 +293,8 @@ companion note:
 
 >  Use `diskslow` if `<mdsk` fails to operate.
 
- _Plunger_ forces them all to be handled by the `MDSKSLOW` stage.  This causes
- one incompatibility:
+_Plunger_ forces them all to be handled by the `MDSKSLOW` stage (the minidisk
+implementaion of `DISKSLOW`).  This causes one incompatibility:
 
    1. The `>` and `>MDSK` stages will now **always** erase their output file
    before starting, if it already exists, even if the stage exits with a non-0
@@ -293,13 +308,13 @@ companion note:
 ### Unsupported stages
 
 In addition to stages that Pipelines does not intend to work on CMS (_e.g._,
-`<mvs`), the following stages are known not to work, and may never work, as
-they require support that VM/370 CE CMS and CP do not have:
+`<MVS`), the following stages are known not to work, and may never work, as
+they require major facilities that VM/370 CE CMS and CP do not have:
 
 * `<OE`
 * `<SFS`
 * `>OE`
-* `>>SFS`
+* `>SFS`
 * `>>OE`
 * `>>SFS`
 * `>>SFSSLOW`
@@ -317,20 +332,25 @@ they require support that VM/370 CE CMS and CP do not have:
 * `FILEDESCRIPTOR`
 * `FILETOKEN`
 * `HELP`
+* `HOSTBYADDR`
+* `HOSTBYNAME`
+* `HOSTID`
+* `HOSTNAME`
 * `IMMCMD`
 * `MAPMDISK`
 * `MDISKBLK`
 * `MDSKUPDATE`
-* `READER`
+* `REXXVARS`
 * `SFSBACK`
 * `SFSDIRECTORY`
+* `SFSRANDOM`
 * `SFSUPDATE`
+* `SQL`
 * `SQLCODES`
 * `SQLSELECT`
 * `STARMON`
 * `STARMSG`
 * `STARSYS`
-* `STATE`
 * `STFLE`
 * `STSI`
 * `TCPCLIENT`
@@ -340,8 +360,6 @@ they require support that VM/370 CE CMS and CP do not have:
 * `TRACKWRITE`
 * `TRFREAD`
 * `UDP`
-* `VARFETCH`
-* `VMC`
 * `WAITDEV`
 * `XAB`
 * `XEDIT`
@@ -383,20 +401,21 @@ ERASE FIXMAC COPY
 ## _Plunger_ code
 
 _Plunger_ provides a collection of services that _CMS Pipelines_ requires and
-that _VM/370 Community Edition_ does not offer. That includes:
+that the _VM/370 Community Edition_ does not offer. That includes:
 
 * `ABNEXIT` macro functions - just `ABNEXIT SET` and `ABNEXIT CLR`, and only
   capturing program-check interruptions.
 * `CMSCALL` SVC - basic support to map `CMSCALL` macros to CMS's SVC 202.
-* `DMSFNSMC` - a (presumed) synonym for `FINIS`
+* `DMSFNSMC` function - a (presumed) synonym for `FINIS`
 * `ESPIE` SVC - basic support to map the MVS `ESPIE` macro to the OS/360 (and
 CMS) `SPIE` macro.
 * `FORM=E` disk I/O macro functions - just remapping plists, not expanding
   limits.  Specifically, `EPOINT`, `ESTATE`, `ESTATEW`, `RDBUF`, and `WRBUF`.
 * EXEC-in-storage functions - the `EXECLOAD`, `EXECDROP`, `EXECMAP`, and
   `EXECSTAT` commands and a front-end to the `EXEC` command.  If you have
-  installed CMS mod HRC100DS, these will not be enabled, and the HRC100DS
-  versions will be used instead.
+  installed CMS update
+  [HRC100DS](https://groups.io/g/h390-vm/files/hrc100ds_v2.vmarc), these will
+  not be enabled, and the HRC100DS versions will be used instead.
 * `GLOBALV` command - a very limited implementation, just enough for
   _Pipelines_' use cases.
 * `LINERD` function - basic support to map `LINERD` macros into `RDTERM`
@@ -433,8 +452,9 @@ list of ZAPs is:
 * `ZAP004` - Set the "VM/SP" bit in the CP `DIAG x'0000'` response.
 * `ZAP005` - PIPELINE uses a filesystem workarea called `FVS`, but it expects a
   newer version than VM/370 CE's.
-* `ZAP006` - PIPELINE calls RENAME (NOUPDIR, but VM/370 R6 expects (NOUPDIRT.
-* `ZAP007` - Bypass DMSEXC when calling Rexx stages (pre-dates CMS update
+* `ZAP006` - PIPELINE calls `RENAME ... ( NOUPDIR`, but VM/370 R6 expects
+  `( NOUPDIRT`.
+* `ZAP007` - Bypass `DMSEXC` when calling Rexx stages (pre-dates CMS update
   HRC100DS, and is not applied if HRC100DS is installed on CMS).
 * `ZAP008` - Force the `CMS` and `COMMAND` stages down the CMS 5.5 code path,
   because we've implemented everything it needs, and the pre-5.5 path fails.
@@ -442,6 +462,18 @@ list of ZAPs is:
   and `>>MDSK`) go through `MDSKSLOW` instead, because the "fast" interface
   uses EDF interfaces not present in, and not likely to be added to, VM/370
   CMS.
+* `ZAP010` - Fix the only apparent genuine _Pipelines_ bug detected so far in
+  this project, which caused a program check in the `NUCEXT` stage if the
+  nucleus extension name was not in upper case.
+* `ZAP011` - Prevent "Assert failure 00000182" in `SPECS`.
+
+The _Plunger_ automated tests are written in
+[RexxUnit](https://github.com/RossPatterson/RexxUnit), and a copy of the
+`REXXUNIT EXEC` driver is included in the source code.  To run them, simply
+install _Plunger_, with the `REXXUNIT EXEC`, the `WITHSTEM TEXT`, and the 
+`* REXXUNIT` files, and enter `REXXUNIT`.  See the
+[RexxUnit README](https://github.com/RossPatterson/RexxUnit/blob/main/README.md)
+for more information.
 
 ### Release History
 The _Plunger_ 0.0.n levels were focused on just getting _Pipelines_ to work at
@@ -449,18 +481,11 @@ all in VM/370 CMS.  _Plunger_ level 0.1.7 successfully demonstrated simple and
 multistream pipelines with only limited _device driver_ usage.  The 0.1.n
 levels which followed were focused on getting the most important _device
 drivers_ working - `console`, `stack`, and disk I/O, and on supporting stages
-written in Rexx (with bREXX release 1.2.0 providing much-needed Exec-in-Storage
+written in Rexx (with bREXX release 1.2.0 providing required Exec-in-Storage
 support).  The 0.2.n levels, which were developed after the 0.1.27 level was
 uploaded to GitHub, were focused on finishing testing and repair of the _device
-drivers_.  _Plunger_ level 0.3.xxx completed that effort.
-
-The _Plunger_ automated tests are written in
-[RexxUnit](https://github.com/RossPatterson/RexxUnit), and a copy of the
-`REXXUNIT EXEC` driver is included in the source code.  To run them, simply
-install _Plunger_, with both the `REXXUNIT EXEC` and the `* REXXUNIT` files,
-and enter `REXXUNIT`.  See the
-[RexxUnit README](https://github.com/RossPatterson/RexxUnit/blob/main/README.md)
-for more information.
+drivers_.  _Plunger_ level 0.2.38 completed that effort.  Level 0.9.0 was the
+first public announcement.
 
 ## Licenses
 
@@ -470,15 +495,19 @@ specific license.
 
 ### CMS Pipelines Runtime Library Distribution license
 
-See http://vm.marist.edu/~pipeline/tandc.html for the specific terms and
+See http://vm.marist.edu/~pipeline/tandc.html (or the copy at
+[the Internet Archive](https://web.archive.org/web/20240813235315/http://vm.marist.edu/~pipeline/tandc.html))
+for the specific terms and
 conditions related to distributing the _CMS Pipelines Runtime Library
-Distribution_.  The remainder of this section is provided as courtesy for
+Distribution_.  The remainder of this section is provided as a courtesy for
 _Plunger_ users, and does not supersede, modify, or replace those terms and
 conditions.
 
 Melinda Varian of Princeton University, in her paper
 ["_Pipe Dreams - What's New in CMS/TSO Pipelines_"](http://vm.marist.edu/~pipeline/pipdream.pdf)
-presented at the 1996 VM Workshop, wrote this (pp. 2-3):
+presented at the 1996 VM Workshop (or the copy at 
+[the Internet Archive](https://web.archive.org/web/20260105014629/http://vm.marist.edu/~pipeline/pipdream.pdf)),
+wrote this (pp. 2-3):
 
 >**III. DISTRIBUTION OF THE CMS PIPELINES RUNTIME LIBRARY**
 >

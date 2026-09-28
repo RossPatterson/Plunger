@@ -9,24 +9,24 @@
  &1 &2 RPSWRS   ASSEMBLE A &3 &4 &5 &6 &7 &8 &9 &10
  &1 &2 SPLITDOC BAT      A &3 &4 &5 &6 &7 &8 &9 &10
  &1 &2 PLUNGER  CNTRL    A &3 &4 &5 &6 &7 &8 &9 &10
-*                            &1 &2 HERCULES CONF     A &3 &4 &5 &6 &7 &8 &9 &10
-*                            &1 &2 PLUNMAC  COPY     A &3 &4 &5 &6 &7 &8 &9 &10
+*      HERCULES CONF     A
+*      PLUNMAC  COPY     A
  &1 &2 PLUVERS  COPY     A &3 &4 &5 &6 &7 &8 &9 &10
  &1 &2 MKPLUNGE EXEC     A &3 &4 &5 &6 &7 &8 &9 &10
-*                            &1 &2 PIPEPREP EXEC     A &3 &4 &5 &6 &7 &8 &9 &10
+*      PKGFILES EXEC     A
  &1 &2 PLUNMAC  EXEC     A &3 &4 &5 &6 &7 &8 &9 &10
  &1 &2 REXXUNIT EXEC     A &3 &4 &5 &6 &7 &8 &9 &10
  &1 &2 PIPE     HELPTASK A &3 &4 &5 &6 &7 &8 &9 &10
  &1 &2 PLUNGER  HELP$CM  A &3 &4 &5 &6 &7 &8 &9 &10
-*                            &1 &2 PLUCMD   LISTING  A &3 &4 &5 &6 &7 &8 &9 &10
-*                            &1 &2 PLUFNC   LISTING  A &3 &4 &5 &6 &7 &8 &9 &10
-*                            &1 &2 PLUMAI   LISTING  A &3 &4 &5 &6 &7 &8 &9 &10
-*                            &1 &2 PLUNXB   LISTING  A &3 &4 &5 &6 &7 &8 &9 &10
-*                            &1 &2 PLUNXE   LISTING  A &3 &4 &5 &6 &7 &8 &9 &10
-*                            &1 &2 PLUZAP   LISTING  A &3 &4 &5 &6 &7 &8 &9 &10
-*                            &1 &2 RPSNXL   LISTING  A &3 &4 &5 &6 &7 &8 &9 &10
-*                            &1 &2 RPSWRS   LISTING  A &3 &4 &5 &6 &7 &8 &9 &10
-*                            &1 &2 PLUNMAC  MACLIB   A &3 &4 &5 &6 &7 &8 &9 &10
+*      PLUCMD   LISTING  A
+*      PLUFNC   LISTING  A
+*      PLUMAI   LISTING  A
+*      PLUNXB   LISTING  A
+*      PLUNXE   LISTING  A
+*      PLUZAP   LISTING  A
+*      RPSNXL   LISTING  A
+*      RPSWRS   LISTING  A
+*      PLUNMAC  MACLIB   A
  &1 &2 $CALL    MACRO    A &3 &4 &5 &6 &7 &8 &9 &10
  &1 &2 $ENTER   MACRO    A &3 &4 &5 &6 &7 &8 &9 &10
  &1 &2 $EXIT    MACRO    A &3 &4 &5 &6 &7 &8 &9 &10
@@ -36,12 +36,14 @@
  &1 &2 PLUPRM   MACRO    A &3 &4 &5 &6 &7 &8 &9 &10
  &1 &2 PLUNGER  MAP      A &3 &4 &5 &6 &7 &8 &9 &10
  &1 &2 WITHSTEM MAP      A &3 &4 &5 &6 &7 &8 &9 &10
+*      README   MD       A
  &1 &2 CHANGELG MEMO     A &3 &4 &5 &6 &7 &8 &9 &10
-*                            &1 &2 ISSUES   MEMO     A &3 &4 &5 &6 &7 &8 &9 &10
+*      ISSUES   MEMO     A
  &1 &2 PLUNGER  MEMO     A &3 &4 &5 &6 &7 &8 &9 &10
  &1 &2 UNLICENS MEMO     A &3 &4 &5 &6 &7 &8 &9 &10
+*      PLUNGER  MESSAGES A
  &1 &2 PLUNGER  MODULE   A &3 &4 &5 &6 &7 &8 &9 &10
-*                            &1 &2 MKDOC    REXX     A &3 &4 &5 &6 &7 &8 &9 &10
+*      MKDOC    REXX     A
  &1 &2 NOTEST   REXXUNIT A &3 &4 &5 &6 &7 &8 &9 &10
  &1 &2 PIPBASIC REXXUNIT A &3 &4 &5 &6 &7 &8 &9 &10
  &1 &2 PIPDEVDR REXXUNIT A &3 &4 &5 &6 &7 &8 &9 &10
@@ -49,15 +51,16 @@
  &1 &2 PIPNOWRK REXXUNIT A &3 &4 &5 &6 &7 &8 &9 &10
  &1 &2 PLUNFUNC REXXUNIT A &3 &4 &5 &6 &7 &8 &9 &10
  &1 &2 PLUNGER  REXXUNIT A &3 &4 &5 &6 &7 &8 &9 &10
-*                            &1 &2 BUILD    SH       A &3 &4 &5 &6 &7 &8 &9 &10
-*                            &1 &2 MKDOC    SH       A &3 &4 &5 &6 &7 &8 &9 &10
-*                            &1 &2 TEST     SH       A &3 &4 &5 &6 &7 &8 &9 &10
-*                            &1 &2 PLUCMD   TEXT     A &3 &4 &5 &6 &7 &8 &9 &10
-*                            &1 &2 PLUFNC   TEXT     A &3 &4 &5 &6 &7 &8 &9 &10
-*                            &1 &2 PLUMAI   TEXT     A &3 &4 &5 &6 &7 &8 &9 &10
-*                            &1 &2 PLUNXB   TEXT     A &3 &4 &5 &6 &7 &8 &9 &10
-*                            &1 &2 PLUNXE   TEXT     A &3 &4 &5 &6 &7 &8 &9 &10
-*                            &1 &2 PLUZAP   TEXT     A &3 &4 &5 &6 &7 &8 &9 &10
-*                            &1 &2 README   MD       A &3 &4 &5 &6 &7 &8 &9 &10
-*                            &1 &2 RPSNXL   TEXT     A &3 &4 &5 &6 &7 &8 &9 &10
+*      BUILD    SH       A
+*      MKDOC    SH       A
+ &1 &2 SPLITDOC SH       A &3 &4 &5 &6 &7 &8 &9 &10
+*      TEST     SH       A
+*      PLUCMD   TEXT     A
+*      PLUFNC   TEXT     A
+*      PLUMAI   TEXT     A
+*      PLUNXB   TEXT     A
+*      PLUNXE   TEXT     A
+*      PLUZAP   TEXT     A
+*      RPSNXL   TEXT     A
  &1 &2 WITHSTEM TEXT     A &3 &4 &5 &6 &7 &8 &9 &10
+* ... AUX and UPDATE files go here ...
