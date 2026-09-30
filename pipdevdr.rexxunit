@@ -328,6 +328,34 @@ TestMembers:
    Call AssertEqual Out.0, J
    Return
 
+TestNucext:
+   Call Erase 'TNX * A'
+   I=0
+   I=I+1; A.I = "TNX      CSECT"
+   I=I+1; A.I = "         USING *,12"
+   I=I+1; A.I = "         LR    11,14"
+   I=I+1; A.I = "         LA    1,MESSAGE"
+   I=I+1; A.I = "         STCM  1,B'0111',PLIST+8+1"
+   I=I+1; A.I = "*        WRTERM 'Hi from TestNucext!'"
+   I=I+1; A.I = "         CNOP  0,4"
+   I=I+1; A.I = "         BAL   1,DOIT"
+   I=I+1; A.I = "PLIST    DC    CL8'TYPLIN'"
+   I=I+1; A.I = "         DC    X'01',AL3(*-*)"
+   I=I+1; A.I = "         DC    C'B',X'00',AL2(L'MESSAGE)"
+   I=I+1; A.I = "DOIT     SVC   202"
+   I=I+1; A.I = "         DC    AL4(1)"
+   I=I+1; A.I = "         BR    11"
+   I=I+1; A.I = "MESSAGE  DC    C'Hi from TestNucext!'"
+   I=I+1; A.I = "         END"
+   A.0 = I
+   Call Assemble 'A.', 'TNX'
+   'NUCXTEXT TNX'
+   'PIPE nucext tNx'
+   Say 'Expected "Hi from TestNucext!", hope you got it.'
+   Call NoError 'NUCXDROP TNX'
+   Call Erase 'TNX * A'
+   Return
+
 TestPdsdirect:
    'PIPE pdsdirect dmmmac maclib s | stem Out.'
    Call AssertEqual 3, Out.0
@@ -572,6 +600,19 @@ TestVarSet:
 TestXrange:
    'PIPE xrange 00-ff | var OUT'
    Call AssertIdentical XRange('00'x, 'ff'x), Out
+   Return
+
+Assemble:
+trace o
+   Parse arg CodeStem . , FN .
+   Do I = 0 to Value(CodeStem || '0')
+      Line.I = Left(Value(CodeStem || I), 80)
+   End
+   'EXECIO' Line.0 'DISKW' FN 'ASSEMBLE A 1 F 80 ( FINIS STEM Line.'
+   Call NoError 'WITHSTEM OUTPUT SYSTERM. COMMAND ASSEMBLE' FN '( DISK'
+   If RC <> 0 then Do I = 1 to SysTerm.0
+      Say SysTerm.I
+   End
    Return
 
 Erase: Procedure expose $RXU.

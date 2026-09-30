@@ -1154,7 +1154,8 @@ SVC199   DS    0H
          SPACE 3
 S199TBL  DS    0H             SVC 199 patch codes
          B     S199DI00          0000: Patch DIAG 0000 call.
-S199MAX  EQU   (*-S199TBL)/4
+         B     S199NUCX          0001: Patch NUCEXT stage bug.
+S199MAX  EQU   (*-S199TBL)
          SPACE 3
 S199DI00 DS    0H             DIAG 0000 patch.
 *
@@ -1164,6 +1165,25 @@ S199DI00 DS    0H             DIAG 0000 patch.
          DIAG  R14,R15,X'0000'  Get CP info.
          ST    R15,LOWSAVE+(15*4)  Pass back length.
          OI    24(R14),X'80'  Turn on the VM/SP bit.
+         B     SVCHRTRN       Return from SVC 199.
+         SPACE 3
+S199NUCX DS    0H             NUCEXT stage patch.
+*
+*        Fix a Pipelines bug that is too hard to ZAP directly.
+*        See PLUZAP:ZAP010 and
+*        https://github.com/RossPatterson/Plunger/issues/13.
+*
+         SPACE 1
+*        LA    R1,X'048'(,R13)  Repair damaged R1.
+         L     R1,LOWSAVE+(R13*4) Get caller's R13.
+         LA    R1,X'048'(,R1)     Set caller's
+         ST    R1,LOWSAVE+(R1*4)    R1.
+         SPACE 1
+*        L     R15,X'0CC'(,R9)  Do what our ZAP overlaid.
+         L     R1,LOWSAVE+(R9*4) Get caller's R9.
+         L     R1,X'0CC'(,R1)    Set caller's
+         ST    R1,LOWSAVE+(R15*4)   R15.
+         SPACE 1
          B     SVCHRTRN       Return from SVC 199.
          TITLE 'SVC204 - Handle a CMSCALL.'
 SVC204   DS    0H

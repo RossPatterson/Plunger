@@ -339,6 +339,21 @@ ZAP009   DS    0H
          $ZAP  REP,4684,0002CA20,RELOC=PIPMOD   DC    A(FPLDSKSL)
          $ZAP  RESET
          EJECT ,
+ZAP010   DS    0X
+*
+*        The NUCEXT stage has what appears to be a genuine Pipelines
+*        bug.  If the nucleus extension is not found in its original
+*        case (e.g., "tNx"), the code that searches for the upcased
+*        version will PROG 0004, because the routine that did the
+*        first search destroyed the second search's input register.
+*        This does not happen if the first search succeeds, or if
+*        Pipelines decides to search via SVC 204 instead of 202.
+*
+         $ZAP  VER,14DEE,58F090CC         L     R15,X'0CC'(,R9)
+         $ZAP  REP,14DEE,0AC7             SVC   199  Go fix
+         $ZAP  REP,14DF0,0001             DC    H'1'    R1.
+         $ZAP  RESET
+         EJECT ,
          $ZAP  END
          TITLE 'EXIS ZAP to apply if HRC100DS is not installed.'
 ZAP007   DS    0X
