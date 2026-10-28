@@ -9,6 +9,8 @@ PLUZAPMD $ENTER ,
          L     R10,NUCPLUPT
          USING PRMSECT,R10
          NI    WRKFLAG1,255-(WRKF1NGO+WRKF1ERX) Turn off "NO GO" flags.
+         MVC   WRKZAPNM,=CL8' '  Init name
+         XC    WRKZAPLN,WRKZAPLN   and line number.
          LA    R4,ZAPTBL1     -> Main ZAP table.
          BAL   R9,APPLY       Apply the main set of ZAPs.
          SPACE 3
@@ -33,33 +35,58 @@ MAINLOOP DS    0H
          IC    R6,ZAPDLEN        length.
          TM    PRMFLAG1,PRMF1DBG  Are we debugging?
          BZ    NODEBUG        No, skip message.
-         AIF   (NOT &DEBUG).NXLD02
+         AIF   (NOT &DEBUG).ZAPD01
          LA    R8,1(,R6)
-MSG015   LINEDIT TEXT='PLUZAP015I ZAP .. ...... .......................*
+         SR    R7,R7          Get record
+         ICM   R7,B'0001',ZAPTYPE  type.
+MSG015   LINEDIT TEXT='PLUZAP015D ZAP ........ ........: .. ...... ....*
+               ........................................................*
                ............',                                          *
-               SUB=(DECA,ZAPTYPE,HEX,(R5),HEX4A,(ZAPDATA,(R8))),       *
+               SUB=(CHARA,WRKZAPNM,DECA,WRKZAPLN,DEC,(R7),HEX,(R5),    *
+               HEX4A,(ZAPDATA,(R8))),                                  *
                DISP=ERRMSG,DOT=NO,MF=(E,WRKLEDPL)
-.NXLD02  ANOP  ,
+.ZAPD01  ANOP  ,
 NODEBUG  DS    0H
+         L     R1,WRKZAPLN    Bump
+         LA    R1,1(,R1)         line
+         ST    R1,WRKZAPLN          number.
          SR    R1,R1          Get ZAP
          IC    R1,ZAPTYPE        verb type.
          C     R1,=A(ZAPTMAX)  Is it a legal value?
          BH    CARDBAD        No, how did THAT happen?
-         B     *+4(R1)        Yes, go to handler:
+         SLL   R1,2           * 4 for branch table.
+         B     ZAPTYPES(R1)   Yes, go to handler:
+ZAPTYPES DS    0H
+         B     CARDBAD        None.
+         B     CARDBEG        BEG
          B     CARDEND        END
          B     CARDREPN       REP RELOC=NONE
          B     CARDREPO       REP RELOC=OFFSET
          B     CARDREPJ       REP RELOC=PIPMOD
          B     CARDREPR       REP RELOC=PLUNGER
-         B     CARDRSET       RESET
+         B     CARDSTOP       STOP
          B     CARDVERN       VER RELOC=NONE
          B     CARDVERJ       VER RELOC=PIPMOD
+ZAPTMAX  EQU   (*-ZAPTYPES)/4  Highest value of ZAPTYPE
          SPACE 3
 CARDBAD  DS    0H
-         BAL   R14,MSG027     "Illegal ZAP line at <addr>: <data>"
+         BAL   R14,MSG027     "Illegal ZAP line in <nm> at <a>: <d>"
          B     NEXTCARD       Go process next entry.
          SPACE 3
-CARDRSET DS    0H
+CARDBEG  DS    0H
+         MVC   WRKZAPNM,ZAPDATA  Save the name.
+         MVC   WRKZAPLN,=F'1'  Set the line number.
+         TM    PRMFLAG1,PRMF1DBG  Are we debugging?
+         BZ    CBNDBG          No, skip message.
+         AIF   (NOT &DEBUG).ZAPD02
+MSG011   LINEDIT TEXT='PLUZAP011D Processing ZAP ........',            *
+               SUB=(CHARA,WRKZAPNM),                                   *
+               DISP=ERRMSG,DOT=NO,MF=(E,WRKLEDPL)
+.ZAPD02  ANOP  ,
+CBNDBG   DS    0H
+         B     NEXTCARD       Go process next entry.
+         SPACE 3
+CARDEND  DS    0H
          NI    WRKFLAG1,255-WRKF1NGO  Turn off "NO GO" flag.
          SH    R6,=H'1'       Fix length.
          B     NEXTCARD       Go process next entry.
@@ -126,7 +153,7 @@ CARDVERJ DS    0H
          BE    NEXTCARD       Yes, go process next entry.
          SPACE 3
 CARDVERF DS    0H
-         BAL   R14,MSG016     "VER failed: <addr> <data>"
+         BAL   R14,MSG016     "VER failed in <name>: <addr> <data>"
          TM    WRKFLAG1,WRKF1NGO  Flag already set?
          BO    NEXTCARD       Yes, go process next entry.
          OI    WRKFLAG1,WRKF1NGO  No, turn on "NO GO" flag
@@ -137,7 +164,7 @@ CARDVERF DS    0H
 ERRNOGO  BAL   R14,MSG018     "NOGO flag is set, REP ignored"
 NEXTCARD LA    R4,ZAPDATA+1(R6) -> next patch.
          B     MAINLOOP       Next!
-CARDEND  DS    0H
+CARDSTOP DS    0H
 *        WAITT ,              Let all the ZAP output get to console.
          LA    1,=CL8'CONWAIT'  Because
          SVC   202               WAITT doesn't
@@ -154,10 +181,10 @@ MSG002   DS    0H             No WRKSECT on this one, so no MF=E.
 MSG016   DS    0H
          USING ZAPENT,R4
          LA    R2,1(,R6)      Bump up from EX len.
-         LINEDIT TEXT='PLUZAP016E VER failed: ........ expected .......*
-               ............................, found ....................*
-               ...............',                                       *
-               SUB=(HEXA,ZAPOFF,HEX4A,(ZAPDATA,(R2)),                  *
+         LINEDIT TEXT='PLUZAP016E VER failed in ........: ........ expe*
+               cted ..................................., found ........*
+               ...........................',                           *
+               SUB=(CHARA,WRKZAPNM,HEXA,ZAPOFF,HEX4A,(ZAPDATA,(R2)),   *
                HEX4A,((R5),(R2))),                                     *
                DISP=ERRMSG,                                            *
                MF=(E,WRKLEDPL)
@@ -179,9 +206,10 @@ MSG018   DS    0H
          BR    R14
          SPACE 3
 MSG027   DS    0H
-         LINEDIT TEXT='PLUZAP027E Illegal ZAP line at ........: .......*
-               ......................................................',*
-               SUB=(HEX4A,(R4),HEXA,(R4)),                             *
+         LINEDIT TEXT='PLUZAP027E Illegal ZAP line in ........ at .....*
+               ..: ....................................................*
+               ..........',                                            *
+               SUB=(CHARA,WRKZAPNM,HEX4A,(R4),HEXA,(R4)),              *
                DISP=ERRMSG,RENT=NO,                                    *
                MF=(E,WRKLEDPL)
          B     MSG017         Set NOGO flag.
@@ -189,7 +217,7 @@ MSG027   DS    0H
          TITLE 'Main ZAPs to always apply to PIPELINE.'
 ZAPTBL1  DS    0D
          EJECT ,
-ZAP001   DS    0X
+ZAP001   $ZAP  BEGIN
 *
 *        Update HRC415DS moved the CMS nucleus to high memory, but
 *        but didn't set NUCALPHA, NUCSIGMA, and NUCOMEGA, so Pipelines
@@ -201,9 +229,9 @@ ZAP001   DS    0X
          $ZAP  VER,248E6,12EE             LTR   R14,R14
          $ZAP  VER,248E8,4780C164         BZ    X'164'(,R12)
          $ZAP  REP,248E8,47F0C164         B     X'164'(,R12)
-         $ZAP  RESET
+         $ZAP  END
          EJECT ,
-ZAP003   DS    0X
+ZAP003   $ZAP  BEGIN
 *
 *        PIPELINE tests NUCMFLAG in several places to determine what
 *        sort of CMS it is running in.  But that  byte was originally
@@ -245,9 +273,9 @@ ZAP003   DS    0X
          $ZAP  REP,7753A,91800CFA         TM    NUCCFA,NUCMXA
          $ZAP  VER,99DA4,918005EA         TM    NUCMFLAG,NUCMXA
          $ZAP  REP,99DA4,91800CFA         TM    NUCCFA,NUCMXA
-         $ZAP  RESET
+         $ZAP  END
          EJECT ,
-ZAP004   DS    0X
+ZAP004   $ZAP  BEGIN
 *
 *        DIAG 0 in VM/370 doesn't set the "VM/SP" bit, so PIPELINE
 *        thinks we're running VM/XA mode.  So patch the DIAG to
@@ -258,9 +286,9 @@ ZAP004   DS    0X
          $ZAP  VER,8664,83EF0000          DIAG  R14,R15,X'0000'
          $ZAP  REP,8664,0AC7              SVC   199
          $ZAP  REP,8666,0000              DC    H'0'
-         $ZAP  RESET
+         $ZAP  END
          EJECT ,
-ZAP005   DS    0X
+ZAP005   $ZAP  BEGIN
 *
 *        PIPELINE uses a newer version of FVS than VM/370's, and gets
 *        STATER0 from the wrong place.
@@ -268,9 +296,9 @@ ZAP005   DS    0X
          $ZAP  VER,E2B0,58500600          L    R5,AFVS
          $ZAP  VER,E2B4,58805220          L    R8,STATER0   @ X'220'
          $ZAP  REP,E2B4,58805200          L    R8,STATER0   @ X'200'
-         $ZAP  RESET
+         $ZAP  END
          EJECT ,
-ZAP006   DS    0X
+ZAP006   $ZAP  BEGIN
 *
 *        PIPELINE calls RENAME (NOUPDIR, but VM/370 R6 expects
 *        (NOUPDIRT.
@@ -278,9 +306,9 @@ ZAP006   DS    0X
          $ZAP  VER,DA58,D9C5D5C1D4C54040  DC   CL8'RENAME  '
          $ZAP  VER,DA80,D5D6E4D7C4C9D940  DC   CL8'NOUPDIR '
          $ZAP  REP,DA80,D5D6E4D7C4C9D9E3  DC   CL8'NOUPDIRT'
-         $ZAP  RESET
+         $ZAP  END
          EJECT ,
-ZAP008   DS    0X
+ZAP008   $ZAP  BEGIN
 *
 *        The CMS and COMMAND stages seem to be written for CMS5.5 and
 *        later.  We've implemented everything it needs, so we force it
@@ -290,9 +318,9 @@ ZAP008   DS    0X
          $ZAP  VER,75F32,4770C014         BNZ   X'014'(,R12)
          $ZAP  VER,75F36,000001C8         DC    H'0'X'01C8'
          $ZAP  REP,75F32,47F0C014         B     X'014'(,R12)
-         $ZAP  RESET
+         $ZAP  END
          EJECT ,
-ZAP009   DS    0H
+ZAP009   $ZAP  BEGIN
 *
 *        Pipelines occasionally crashes with a PROG 0009 (divide-by-0)
 *        exception, and crashes CMS as a result.  It appears that this
@@ -337,9 +365,9 @@ ZAP009   DS    0H
          $ZAP  VER,4678,6ED4C4E2D2404040        DC    CL8'>MDSK   '
          $ZAP  VER,4684,0002CB40,RELOC=PIPMOD   DC    A(FPLDSKWE)
          $ZAP  REP,4684,0002CA20,RELOC=PIPMOD   DC    A(FPLDSKSL)
-         $ZAP  RESET
+         $ZAP  END
          EJECT ,
-ZAP010   DS    0X
+ZAP010   $ZAP  BEGIN
 *
 *        The NUCEXT stage has what appears to be a genuine Pipelines
 *        bug.  If the nucleus extension is not found in its original
@@ -352,9 +380,9 @@ ZAP010   DS    0X
          $ZAP  VER,14DEE,58F090CC         L     R15,X'0CC'(,R9)
          $ZAP  REP,14DEE,0AC7             SVC   199  Go fix
          $ZAP  REP,14DF0,0001             DC    H'1'    R1.
-         $ZAP  RESET
+         $ZAP  END
          EJECT ,
-ZAP011   DS    0X
+ZAP011   $ZAP  BEGIN
 *
 *        The SPECS stage sometimes, especially in smaller virtual
 *        machines, calls a routine in FPLSPS called LOADSPAC, which
@@ -373,10 +401,11 @@ ZAP011   DS    0X
          $ZAP  VER,CBB9E,58F0C47E         L     R15,X'47E'(,R12)
          $ZAP  VER,CBBA2,0DEF             BASR  R14,R15
          $ZAP  REP,CBB96,47F0             B     X'42E'(,R12)
-         EJECT ,
          $ZAP  END
+         EJECT ,
+         $ZAP  STOP
          TITLE 'EXIS ZAP to apply if HRC100DS is not installed.'
-ZAP007   DS    0X
+ZAP007   $ZAP  BEGIN
 *
 *        PIPELINE calls EXEC via BALR to run Rexx stages.  Make it
 *        call bREXX directly, because DMSEXC doesn't know about
@@ -388,37 +417,22 @@ ZAP007   DS    0X
          $ZAP  REP,99F1E,58F00FF8         L    R15,NUCPLUEX
          $ZAP  VER,99F48,58F00690         L    R15,AEXEC
          $ZAP  REP,99F48,58F00FF8         L    R15,NUCPLUEX
-         $ZAP  RESET
-         EJECT ,
          $ZAP  END
+         EJECT ,
+         $ZAP  STOP
          LTORG ,
-         TITLE 'ZAP details.'
-ZAPENT   DSECT ,
-ZAPOFF   DS    AL4            Offset to code location.
-ZAPTYPE  DS    X              Entry type.
-ZAPTEND  EQU   0              - END
-ZAPTREPN EQU   4              - REP RELOC=NONE
-ZAPTREPO EQU   8              - REP RELOC=OFFSET
-ZAPTREPJ EQU   12             - REP RELOC=PIPMOD
-ZAPTREPR EQU   16             - REP RELOC=PLUNGER
-ZAPTRES  EQU   20             - RESET
-ZAPTVERN EQU   24             - VER RELOC=NONE
-*ZAPTVERO                     - VER RELOC=OFFSET - unused
-ZAPTVERJ EQU   28             - VER RELOC=PIPMOD
-*ZAPTVERR                     - VER RELOC=PLUNGER - unused
-ZAPTMAX  EQU   28             Highest value of ZAPTYPE
-ZAPDLEN  DS    AL1            Data length.
-ZAPDATA  DS    0X             Start of ZAP data.
          TITLE 'Working storage.'
 WRKSECT  DSECT ,
 WRKSAVE  DS    18F            Save area (must be first in DSECT).
+WRKZAPNM DS    CL8            Name of the ZAP we're processing.
+WRKZAPLN DS    F              Line number of the ZAP we're processing.
 WRKLEND  DS    F              Size of this WRKSECT in doublewords.
 WRKFLAG1 DS    X              Flags
 WRKF1NGO EQU   X'80'          - ZAP "VER" failed.
 WRKF1ERX EQU   X'40'          - Need to fail PLUZAPMD.
          SPACE 1
 WRKPLST1 DS    0D             Assorted plists, sharing space.
-WRKLEDPL LINEDIT MF=L,MAXSUBS=3  LINEDIT plist.
+WRKLEDPL LINEDIT MF=L,MAXSUBS=5  LINEDIT plist.
          ORG   ,
 WRKPLSTS EQU   WRKPLST1,*-WRKPLST1
 WRKDATA  DS    0D             Start of variable data area.
@@ -432,6 +446,7 @@ NUCPLUPT DS    A              -> PLUNGER PRMSECT.
          ORG   ,
          EJECT ,
          PLUPRM ,
+         PLUZAPE ,
          REGEQU ,
          SCBLOCK ,
          END   ,

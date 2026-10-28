@@ -1,0 +1,20 @@
+         MACRO ,
+         PLUZAPE ,
+ZAPENT   DSECT ,
+ZAPOFF   DS    AL4            Offset to code location.
+ZAPTYPE  DS    X              Entry type.
+*        EQU   0              - Invalid
+ZAPTBEG  EQU   1              - BEGIN
+ZAPTEND  EQU   2              - END
+ZAPTREPN EQU   3              - REP RELOC=NONE
+ZAPTREPO EQU   4               - REP RELOC=OFFSET
+ZAPTREPJ EQU   5              - REP RELOC=PIPMOD
+ZAPTREPR EQU   6              - REP RELOC=PLUNGER
+ZAPTSTP  EQU   7              - STOP
+ZAPTVERN EQU   8              - VER RELOC=NONE
+*ZAPTVERO                     - VER RELOC=OFFSET - unused
+ZAPTVERJ EQU   9              - VER RELOC=PIPMOD
+*ZAPTVERR                     - VER RELOC=PLUNGER - unused
+ZAPDLEN  DS    AL1            Data length.
+ZAPDATA  DS    0X             Start of ZAP data.
+         MEND  ,
