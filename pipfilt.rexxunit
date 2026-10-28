@@ -1,0 +1,20 @@
+/* Unit tests for SPECS stage. */
+ 
+TestSetup:
+ 
+   /* Reset PLUNGER to clean state. */
+   Call NoError 'NUCEXT PLUNGER'
+   If RC = 0 then Call NoError 'NUCXDROP PLUNGER'
+   'PLUNGER ENABLE'
+   Return
+ 
+TestTeardown:
+   Call NoError 'NUCEXT PLUNGER'
+   If RC = 0 then Call NoError 'NUCXDROP PLUNGER'  /* Reset to clean state. */
+   Return
+ 
+TestSpecsSimple:
+   'pipe literal asdf | spec />>>/ 1 1-* nw | var OUTPUT'
+   Call AssertIdentical '>>> asdf ', Output
+   Return
+ 

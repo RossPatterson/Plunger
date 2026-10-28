@@ -354,6 +354,26 @@ ZAP010   DS    0X
          $ZAP  REP,14DF0,0001             DC    H'1'    R1.
          $ZAP  RESET
          EJECT ,
+ZAP011   DS    0X
+*
+*        The SPECS stage sometimes, especially in smaller virtual
+*        machines, calls a routine in FPLSPS called LOADSPAC, which
+*        then aborts with FPLINX409E Assert failure 00000182. It's
+*        just a guess, but from "FPLSPS" and "LOADSPAC", I'm guessing
+*        this is an attempt to use a dataspace, which of course,
+*        VM/370 CMS doesn't have.
+*
+*        This code in FPLSPERN only calls that routine for one
+*        condition.  It isn't clear what is really going on, but
+*        but ignoring that condition always seems to work.
+*
+         $ZAP  VER,CBB92,9506B133         CLI   X'133'(R11),6
+         $ZAP  VER,CBB96,4770C42E         BNE   X'42E'(,R12)
+         $ZAP  VER,CBB9A,4170B120         LA    R7,X'120'(,R11)
+         $ZAP  VER,CBB9E,58F0C47E         L     R15,X'47E'(,R12)
+         $ZAP  VER,CBBA2,0DEF             BASR  R14,R15
+         $ZAP  REP,CBB96,47F0             B     X'42E'(,R12)
+         EJECT ,
          $ZAP  END
          TITLE 'EXIS ZAP to apply if HRC100DS is not installed.'
 ZAP007   DS    0X
