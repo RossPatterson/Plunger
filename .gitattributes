@@ -1,0 +1,5 @@
+*.exec      text linguist-language=REXX
+*.rexxunit  text linguist-language=REXX
+
+*.assemble  text linguist-language=Assembly
+*.macro     text linguist-language=Assembly
