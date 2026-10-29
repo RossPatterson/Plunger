@@ -81,6 +81,47 @@ TestDebugNotEnabled:
    Call AssertStemEqual 'Ref.', 'O.'
    Return
 
+TestDebugNxlExtraParms:
+   'PLUNGER ENABLE'
+   Ref.0 = 1
+   Ref.1 = 'PLUCMD007E Bad parameter FNORD for DEBUGNXL command.'
+   Call NoError 'WITHSTEM OUTPUT O. COMMAND PLUNGER DEBUGNXL ON FNORD'
+   $RC = RC
+   Call AssertStemEqual 'Ref.', 'O.'
+   Call AssertEqual 7, $RC
+   Return
+
+TestDebugNxlOff:
+   'PLUNGER ENABLE'
+   Ref.0 = 1
+   Ref.1 = 'PLUCMD009I NUCXLOAD debugging is now off.'
+   'WITHSTEM OUTPUT O. COMMAND PLUNGER DEBUGNXL OFF'
+   Call AssertStemEqual 'Ref.', 'O.'
+   Return
+
+TestDebugNxlOn:
+   'PLUNGER ENABLE'
+   Ref.0 = 1
+   Ref.1 = 'PLUCMD009I NUCXLOAD debugging is now on.'
+   'WITHSTEM OUTPUT O. COMMAND PLUNGER DEBUGNXL ON'
+   Call AssertStemEqual 'Ref.', 'O.'
+   Return
+
+TestDebugNxlNone:
+   'PLUNGER ENABLE'
+   Ref.0 = 1
+   Ref.1 = 'PLUCMD009I NUCXLOAD debugging is off.'
+   'WITHSTEM OUTPUT O. COMMAND PLUNGER DEBUGNXL'
+   Call AssertStemEqual 'Ref.', 'O.'
+   Return
+
+TestDebugNxlNotEnabled:
+   Ref.0 = 1
+   Ref.1 = 'PLUCMD009I NUCXLOAD debugging is off.'
+   'WITHSTEM OUTPUT O. COMMAND PLUNGER DEBUGNXL'
+   Call AssertStemEqual 'Ref.', 'O.'
+   Return
+
 TestDisable:
    ExpectedDifference = 16
    If HasHRC100DS then ExpectedDifference = ExpectedDifference - 4 /* CMS already has EXECDROP et al. */
