@@ -1,5 +1,6 @@
 Plunger Change LOG
 ==================
+      - Formalize conditional ZAPs.
       - Build with debugging.
       - Split PLUNGER and NUCXLOAD debugging.
       - Tweak ZAP format before GA release.

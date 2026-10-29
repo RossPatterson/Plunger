@@ -1,9 +1,10 @@
          MACRO ,
-&LABEL   $ZAP  &TYPE,&OFFSETX,&DATA,&RELOC=NONE
+&LABEL   $ZAP  &TYPE,&OFFSETX,&DATA,&IF=,&RELOC=NONE
 .*
 .*     $ZAP BEGIN - start a ZAP
 .*     $ZAP END - end a ZAP
 .*     $ZAP REP,offset,data,[,RELOC=...] - alter data
+.*     $ZAP SKIP,IF=(byte,bit,ON|OFF) - skip a ZAP
 .*     $ZAP STOP - end of all ZAPs
 .*     $ZAP VER,offset,data[,RELOC=...] - verify data
 .*
@@ -13,11 +14,15 @@
 .*     PLUNGER - relative to PLUNGER (REP only)
 .*     OFFSET - relative to target location (REP only)
 .*
-         LCLC  &DATALBL,&TCODE
+         LCLC  &DATALBL,&ONOFF,&TCODE
 &DATALBL SETC  'Z&SYSNDX.D'
          AIF   ('&TYPE' EQ 'REP').REP1
          AIF   ('&TYPE' EQ 'VER').VER1
 .* All the others have no DATA, OFFSETX, or RELOC
+&TCODE   SETC  'ZAPTSKP'
+         AIF   ('&TYPE' EQ 'SKIP').SKP1
+.* All the others have no IF
+         AIF   ('&IF' NE '').IBAD1
          AIF   ('&DATA' NE '').DBAD
          AIF   ('&OFFSETX' NE '').OBAD
          AIF   ('&RELOC' NE 'NONE').RBAD
@@ -31,7 +36,20 @@
 .BEG1    ANOP  ,
          AIF   ('&LABEL' EQ '').LBAD
          AGO   .DATAB
+.SKP1    ANOP  ,
+         AIF   ('&IF'(1,1) NE '(').IBAD2
+         AIF   (N'&IF NE 3).IBAD2
+         AIF   ('&IF(1)'(1,3) NE 'PRM').IBAD2
+         AIF   ('&IF(2)'(1,3) NE 'PRM').IBAD2
+&ONOFF   SETC  '0'
+         AIF   ('&IF(3)' EQ 'OFF').SKP2
+&ONOFF   SETC  '&IF(2)'
+         AIF   ('&IF(3)' EQ 'ON').SKP2
+         AGO   .IBAD2
+.SKP2    ANOP  ,
+         AGO   .DATAS
 .VER1    ANOP  ,
+         AIF   ('&IF' NE '').IBAD1
 &TCODE   SETC  'ZAPTVERN'
          AIF   ('&RELOC' EQ 'NONE').DATAN
 .*&TCODE   SETC  'ZAPTVERO'
@@ -43,6 +61,7 @@
          AIF   ('&RELOC' EQ 'PIPMOD').DATAJ
          AGO   .RBAD
 .REP1    ANOP  ,
+         AIF   ('&IF' NE '').IBAD1
 &TCODE   SETC  'ZAPTREPN'
          AIF   ('&RELOC' EQ 'NONE').DATAN
 &TCODE   SETC  'ZAPTREPO'
@@ -76,8 +95,18 @@
 &LABEL   DC    AL4(X'&OFFSETX'),AL1(&TCODE),AL1(4-1)
 &DATALBL DC    AL4(&DATA)
          MEXIT ,
+.DATAS   ANOP  ,
+         DC    AL4(0),AL1(&TCODE),AL1(6-1)
+&DATALBL DC    AL4(&IF(1)-PRMSECT),AL1(&IF(2)),AL1(&ONOFF)
+         MEXIT ,
 .DBAD    ANOP  ,
          MNOTE 8,'"&DATA" is invalid for &TYPE.'
+         MEXIT ,
+.IBAD1   ANOP  ,
+         MNOTE 8,'"&IF=" is invalid for &TYPE.'
+         MEXIT ,
+.IBAD2   ANOP  ,
+         MNOTE 8,'"&IF=&IF" is invalid.'
          MEXIT ,
 .LBAD    ANOP  ,
          MNOTE 8,'&TYPE requires a label.'
