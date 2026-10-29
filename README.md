@@ -25,7 +25,8 @@ See [Licenses](#licenses) below for more information.
   * [Unsupported stages](#unsupported-stages)
   * [Pipelines MACLIBs](#pipelines-maclibs)
 * [Plunger code](#plunger-code)
-  * [Release History](#release-history)
+  * [Release history](#release-history)
+  * [Bugs discovered](#bugs-discovered)
 * [Licenses](#licenses)
   * [CMS Pipelines Runtime Library Distribution license](#cms-pipelines-runtime-library-distribution-license)
   * [Plunger license](#plunger-license)
@@ -475,7 +476,7 @@ install _Plunger_, with the `REXXUNIT EXEC`, the `WITHSTEM TEXT`, and the
 [RexxUnit README](https://github.com/RossPatterson/RexxUnit/blob/main/README.md)
 for more information.
 
-### Release History
+### Release history
 The _Plunger_ 0.0.n levels were focused on just getting _Pipelines_ to work at
 all in VM/370 CMS.  _Plunger_ level 0.1.7 successfully demonstrated simple and
 multistream pipelines with only limited _device driver_ usage.  The 0.1.n
@@ -486,6 +487,62 @@ support).  The 0.2.n levels, which were developed after the 0.1.27 level was
 uploaded to GitHub, were focused on finishing testing and repair of the _device
 drivers_.  _Plunger_ level 0.2.38 completed that effort.  Level 0.9.0 was the
 first public announcement.
+
+### Bugs discovered
+During the course of building _Plunger_, several existing bugs in other code
+were discovered.
+* bREXX:
+  * [Host commands aren't run if too long](https://github.com/adesutherland/CMS-370-BREXX/issues/127) -
+    Commands sent to the host environment via the ADDRESS instruction
+	(including the implied form) get RC=-3 if more than 67 tokens long.  Fixed
+	in bREXX release 1.2.1.
+* CMS Pipelines:
+  * [FPLINX410E ABEND 000000C4 at 00D40588; PSW FFE400C4 E0D40588](https://github.com/RossPatterson/Plunger/issues/13) -
+    The `NUCEXT` stage crashes and can crash CMS if the nucleus extension name
+	specified is not in upper case.  Fixed by `ZAP010` in `PLUZAP`.
+* CMS:
+  * [NUCEXT and SUBCOM macros require NAME= on MF=L form](https://github.com/s390guy/vm370/issues/102) -
+    The `NUCEXT` and `SUBCOM` macros should not require any parameters besides
+	the operation type when coded with the list form.  Fixed by CMS update
+	[HRC405DS](https://groups.io/g/h390-vm/files/hrc405ds_v4.vmarc).
+  * [NUCEXT and SUBCOM macros do not set function name with MF=(E,...)](https://github.com/s390guy/vm370/issues/103) -
+    The `NUCEXT` and `SUBCOM` macros do not set the function name when coded in
+	the execute form.  Fixed by CMS update
+	[HRC405DS](https://groups.io/g/h390-vm/files/hrc405ds_v4.vmarc).
+  * [NUCEXT macro with SET, ORIGIN= and MF=(E,...) builds plist incorrectly, causing random storage overlays](https://github.com/s390guy/vm370/issues/106) -
+    The `NUCEXT` macro, when coded with the the `SET` and `MF=(E,...)` options,
+	can overlay random storage when the `ORIGIN=` option is coded with constant
+	parameters. Fixed by CMS update
+	[HRC405DS](https://groups.io/g/h390-vm/files/hrc405ds_v4.vmarc).
+  * [NUCXTEXT (SYSTEM doesn't set KEY=NUCLEUS](https://github.com/s390guy/vm370/issues/112) -
+	The `NUCXTEXT` command with the `SYSTEM` option doesn't set `KEY=NUCLEUS`
+	when installing the nucleus extension.  Fixed by CMS update
+	[HRC405DS](https://groups.io/g/h390-vm/files/hrc405ds_v4.vmarc).
+  * [NUCXTEXT occasionally causes DMSLIO109S VIRTUAL STORAGE CAPACITY EXCEEDED](https://github.com/s390guy/vm370/issues/131) -
+    Depending on what has happened in the virtual machine before the `NUCXTEXT`
+	command is issued, and if the `SYSTEM` option is omitted, `NUCXTEXT` may
+	issue a `LOAD` command that `DMSLDR` doesn't like.  Fixed by CMS update
+	[HRC422DS](https://groups.io/g/h390-vm/files/hrc422ds.vmarc).
+  * [CMS NUCEXTs and SUBCOMs not always promoted](https://github.com/s390guy/vm370/issues/132) -
+    The `SCBLOK` for the most-recently referenced CMS nucleus extension is
+	supposed to be at the top of the chain rooted at `NUCXCBLK`, but may not be
+	under certain circumstances.  Fixed by CMS update
+	[HRC405DS](https://groups.io/g/h390-vm/files/hrc405ds_v4.vmarc).
+  * [NUCXDROP doesn't set R1=FFxxxxxx](https://github.com/s390guy/vm370/issues/140) -
+    `NUCXDROP` is supposed to set the SVC 202 call type (high byte of R1) to
+	X'FF' when invoking the nucleus extensions that are about to be dropped and
+	that have the `SERVICE` option set, but does not.  Fixed by CMS update
+	[HRC405DS](https://groups.io/g/h390-vm/files/hrc405ds_v4.vmarc).
+  * [DMSITS launches nucleus extensions disabled despite NUCEXT SET PSW.](https://github.com/s390guy/vm370/issues/183) -
+    `NUCEXT` declare correctly stores the PSW, but `DMSITS` then launches it
+	with a first word of X'00000000'. This results in I/O and External
+	interrupts being disabled, even if the declaring program wanted them
+	enabled.  Fixed by CMS update
+	[HRC405DS](https://groups.io/g/h390-vm/files/hrc405ds_v4.vmarc).
+  * [DMSSNXAB builds NUCEXT plist incorrectly for ABEND recovery](https://github.com/s390guy/vm370/issues/184) -
+    The CMS ABEND handler for nucleus extension processing, builds the NUCEXT
+	plist for removing non-SYSTEM nucleus extensions incorrectly.  Fix is in
+	the issue.
 
 ## Licenses
 

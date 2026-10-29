@@ -1,0 +1,10 @@
+         MACRO ,
+         PLUFUNC ,
+FUNCENT  DSECT ,
+FUNCNAME DS    CL8            Function name.
+FUNCEP   DS    A              Offset to entrypoint.
+FUNCIFBY DS    A              Offset to IF= flag byte.
+FUNCIFBI DS    AL1            IF= bit value to test.
+FUNCIFBV DS    AL1            IF= bit value to require.
+         DS    XL2
+         MEND  ,
