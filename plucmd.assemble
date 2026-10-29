@@ -10,6 +10,8 @@ PLUCMD   CSECT ,
 PLUCMDEP $ENTER ,
          LR    R3,R1          Tokenized PLIST.
          SPACE 3
+         CLC   8(8,R3),=CL8'DEBUGNXL' Control NUXCLOAD?
+         BE    CMDDBNXL       Yes, do it.
          CLC   8(8,R3),=CL8'DEBUG' Control debugging code?
          BE    CMDDEBUG       Yes, do it.
          CLC   16(8,R3),=8X'FF' End of command after verb?
@@ -40,6 +42,50 @@ PCMDERBP BAL   R14,MSG007     "Bad parameter <parm> for <cmd> command"
 VERSION  DC    CL8'&PLUVERS'
 BLDDATE  DC    CL8'&SYSDATE'
 BLDTIME  DC    CL8'&SYSTIME'
+         TITLE 'CMDDBNXL - Turn NUCXLOAD debugging on or off.'
+         PUSH  USING
+CMDDBNXL DS    0H
+         USING PRMSECT,R10
+         ICM   R10,B'1111',NUCPLUPT  Got a PRMSECT?
+         BNZ   *+8            Yes, skip.
+         BAL   R14,PRMFREE    No, got make one.
+         CLC   16(8,R3),=8X'FF'  Just "DEBUGNXLNXL"?
+         BE    DNXSHOW        Yes, show current state.
+         LA    R4,24(,R3)
+         CLC   0(8,R4),=8X'FF'  "DEBUGNXL something somethingelse"?
+         BNE   PCMDERBP       Yes, error.
+         LA    R4,16(,R3)
+         CLC   0(8,R4),=CL8'OFF'  "DEBUGNXL OFF"?
+         BE    DNXOFF         Yes, go do it.
+         CLC   0(8,R4),=CL8'ON'  "DEBUGNXL ON"?
+         BE    DNXON          Yes, go do it.
+         B     PCMDERBP       None of the above, error.
+         SPACE 3
+DNXOFF   DS    0H
+         NI    PRMFLAG1,255-PRMF1DNX  Turn off DEBUGNXL flag.
+         LA    R6,=CL8'NUCXLOAD'
+         LA    R4,=CL3'now'
+         LA    R5,=CL3'off'
+         BAL   R14,MSG009     "NUCXLOAD debugging is now <state>"
+         B     PCMDEXIT       Exit.
+         SPACE 3
+DNXON    DS    0H
+         OI    PRMFLAG1,PRMF1DNX  Turn on NXL DEBUGNXL flag.
+         LA    R6,=CL8'NUCXLOAD'
+         LA    R4,=CL3'now'
+         LA    R5,=CL3'on'
+         BAL   R14,MSG009     "NUCXLOAD debugging is now <state>"
+         B     PCMDEXIT       Exit.
+DNXSHOW  DS    0H
+         LA    R6,=CL8'NUCXLOAD'
+         LA    R4,=CL3'   '
+         LA    R5,=CL3'on'    Assume debugging is on.
+         TM    PRMFLAG1,PRMF1DNX  Is it?
+         BO    *+8            Yes, skip.
+         LA    R5,=CL3'off'   No, say otherwise.
+         BAL   R14,MSG009     "NUCXLOAD debugging is <state>"
+         B     PCMDEXIT       Exit.
+         POP   USING
          TITLE 'CMDDEBUG - Turn debugging on or off.'
          PUSH  USING
 CMDDEBUG DS    0H
@@ -61,6 +107,7 @@ CMDDEBUG DS    0H
          SPACE 3
 DBGOFF   DS    0H
          NI    PRMFLAG1,255-PRMF1DBG  Turn off debugging flag.
+         LA    R6,=CL8'PLUNGER'
          LA    R4,=CL3'now'
          LA    R5,=CL3'off'
          BAL   R14,MSG009     "PLUNGER debugging is now <state>"
@@ -68,12 +115,14 @@ DBGOFF   DS    0H
          SPACE 3
 DBGON    DS    0H
          OI    PRMFLAG1,PRMF1DBG  Turn on debugging flag.
+         LA    R6,=CL8'PLUNGER'
          LA    R4,=CL3'now'
          LA    R5,=CL3'on'
          BAL   R14,MSG009     "PLUNGER debugging is now <state>"
          B     PCMDEXIT       Exit.
          SPACE 3
 DBGSHOW  DS    0H
+         LA    R6,=CL8'PLUNGER'
          LA    R4,=CL3'   '
          LA    R5,=CL3'on'    Assume debugging is on.
          TM    PRMFLAG1,PRMF1DBG  Is it?
@@ -187,7 +236,7 @@ ENABEXST SVC   202            Does CMS have EXIS support?
          S     R15,=A(X'20000')  relocated
          AR    R15,R12              NUCXLOAD
          ST    R15,SCBENTR             entrypoint.
-         TM    PRMFLAG1,PRMF1DBG  Are we debugging?
+         TM    PRMFLAG1,PRMF1DNX  Are we debugging?
          BZ    *+8            No, skip.
          OI    SCBUFLAG,SCBUFDBG  Yes, tell NUCXLOAD that.
          DROP  R2
@@ -376,8 +425,8 @@ MSG008   DS    0H
          BR    R14
          SPACE 3
 MSG009   DS    0H
-         LINEDIT TEXT='PLUCMD009I PLUNGER debugging is ... ...',       *
-               SUB=(CHARA,(R4),CHARA,(R5)),                            *
+         LINEDIT TEXT='PLUCMD009I ........ debugging is ... ...',      *
+               SUB=(CHARA,(R6),CHARA,(R4),CHARA,(R5)),                 *
                DISP=ERRMSG,MF=(E,WRKLEDPL)
          SR    R15,R15
          BR    R14

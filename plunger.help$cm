@@ -4,19 +4,26 @@ Use the PLUNGER command to control use of CMS Pipelines.
 
 +-----------------------------------------------------------------------------+
 |                                                                             |
-| >>--PLUNGER---.--DEBUG--.-------.--.--><                                    |
-|               |         +--OFF--+  |                                        |
-|               |         '--ON---'  |                                        |
-|               +--DISABLE-----------+                                        |
-|               +--ENABLE------------+                                        |
-|               '--VERSION-----------'                                        |
+| >>--PLUNGER---.--DEBUG--.-------.-----.--><                                 |
+|               |         +--OFF--+     |                                     |
+|               |         '--ON---'     |                                     |
+|               |--DEBUGNXL--.-------.--+                                     |
+|               |            +--OFF--+  |                                     |
+|               |            '--ON---'  |                                     |
+|               +--DISABLE--------------+                                     |
+|               +--ENABLE---------------+                                     |
+|               '--VERSION--------------'                                     |
 |                                                                             |
 +-----------------------------------------------------------------------------+
 
 where:
 
 DEBUG    on its own specifies to display the current debugging status for
-         Plunger.
+         Plunger.  The default is OFF and NXLOFF.
+
+DEBUG NXLOFF specifies to stop debugging of NUCXLOAD.
+
+DEBUG NXLON  specifies to start debugging of NUCXLOAD.
 
 DEBUG OFF specifies to stop debugging of Plunger.
 
