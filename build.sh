@@ -48,7 +48,7 @@ herccontrol "/COPYFILE * CNTRL    A (RECFM F LRECL 80" -w "^Ready"
 herccontrol "/COPYFILE * MACRO    A (RECFM F LRECL 80" -w "^Ready"
 
 # Compile the code and build the MODULE.
-herccontrol "/MKPLUNGE" -w "^Ready;"
+herccontrol "/MKPLUNGE (DEBUG" -w "^Ready;"
 
 # Make the package VMARC file.
 # Add all the AUX* and UPD* files to the list of files to package.  LISTFILE
