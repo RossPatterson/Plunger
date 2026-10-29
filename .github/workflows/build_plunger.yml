@@ -7,7 +7,7 @@ jobs:
 #**************************************************#
   update_cms:
     name: Update CMS
-    runs-on: [ubuntu-latest]
+    runs-on: [ubuntu-24.04]
     container: rosspatterson/vm370:builder
     steps:
       - name: Checkout source
@@ -61,7 +61,7 @@ jobs:
   build:
     name: Build Plunger
     needs: [update_cms]
-    runs-on: [ubuntu-latest]
+    runs-on: [ubuntu-24.04]
     container: rosspatterson/vm370:builder
     outputs:
       BUILD_DATE:     ${{ steps.build.outputs.BUILD_DATE     }}
@@ -135,7 +135,7 @@ jobs:
   test:
     name: Test Plunger
     needs: [update_cms, build]
-    runs-on: [ubuntu-latest]
+    runs-on: [ubuntu-24.04]
     container: rosspatterson/vm370:builder
     steps:
       - name: Get DASD changes
@@ -204,7 +204,7 @@ jobs:
     if: startsWith(github.ref, 'refs/tags/')
     name: Release
     needs: [update_cms, build, test]
-    runs-on: [ubuntu-latest]
+    runs-on: [ubuntu-24.04]
     permissions:
       packages: write
       contents: write

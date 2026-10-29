@@ -1,5 +1,6 @@
 Plunger Change LOG
 ==================
+      - Formalize conditional functions.
       - Formalize conditional ZAPs.
       - Build with debugging.
       - Split PLUNGER and NUCXLOAD debugging.

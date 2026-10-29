@@ -9,8 +9,8 @@ PLUFNC   CSECT ,
 PLUFNCLD $ENTER ,
          L     R10,NUCPLUPT
          USING PRMSECT,R10
-         LA    R3,FUNCTBLM    Get address and
-         LA    R4,FUNCCNTM       count of main func list.
+         LA    R3,FUNCTBL     Get address and
+         LA    R4,FUNCCNT        count of func list.
          BAL   R9,LOADFNCS    Load 'em up.
          SPACE 3
          MVC   PRMSVCNP,SVCNPSW  Save CMS's SVC-new PSW.
@@ -27,10 +27,6 @@ PLUFNCLD $ENTER ,
          SPACE 3
          TM    PRMFLAG1,PRMF1EXS  Does CMS have EXIS support?
          BO    LOADNEXS       Yes, then we don't need ours.
-         LA    R3,FUNCTBLE    Get address and
-         LA    R4,FUNCCNTE       count of EXIS func list.
-         BAL   R9,LOADFNCS    Load 'em up.
-         SPACE 3
          L     R1,=A(EXEC-PLUFNC)  Put A(our EXEC handler)
          AR    R1,R12            where PIPELINE
          ST    R1,NUCPLUEX          can find it.
@@ -42,6 +38,17 @@ LOADEXIT $EXIT ,
 LOADFNCS DS    0H
 LOADLOOP DS    0H
          USING FUNCENT,R3
+         SPACE 3
+         ICM   R1,B'1111',FUNCIFBY Get offset to flag byte.
+         BZ    LOADDEF        If none, not conditional.
+         AR    R1,R10         Convert to address.
+         SR    R0,R0
+         ICM   R0,B'1000',FUNCIFBI   Get flag value.
+         N     R0,0(R1)       Isolate the flag.
+         CLM   R0,B'1000',FUNCIFBV   Is it the required value?
+         BNE   LOADNEXT       No, skip it.
+         SPACE 3
+LOADDEF  DS    0H
          L     R5,FUNCEP      Get entry
          AR    R5,R12            point.
          XC    WRKPLSTS,WRKPLSTS  Clear out plist.
@@ -58,6 +65,7 @@ LOADLOOP DS    0H
          LTR   R15,R15        OK?
          BNZ   LOADERIN       Error, exit.
          SPACE 3
+LOADNEXT DS    0H
          LA    R3,FUNCLEN(,R3) Go do
          BCT   R4,LOADLOOP       next one.
          BR    R9
@@ -97,26 +105,31 @@ UNLDEDRP SVC   202
          DC    AL4(1)
 UNLDNEXD DS    0H
          SPACE 3
-         LA    R3,FUNCTBLM    Get address and
-         LA    R4,FUNCCNTM       count of main func list.
-         BAL   R9,UNLDFNCS    Unload the main functions.
-         SPACE 3
-         TM    PRMFLAG1,PRMF1EXS  Does CMS have EXIS support?
-         BO    UNLDNXS        Yes, then we don't need ours.
-         LA    R3,FUNCTBLE    Get address and
-         LA    R4,FUNCCNTE       count of EXIS func list.
-         BAL   R9,UNLDFNCS    Unload the EXIS functions.
-UNLDNXS  DS    0H
+         LA    R3,FUNCTBL     Get address and
+         LA    R4,FUNCCNT        count of func list.
+         BAL   R9,UNLDFNCS    Unload the functions.
          SR    R15,R15
 UNLDEXIT $EXIT ,
          SPACE 3
          USING FUNCENT,R3
 UNLDFNCS DS    0H
 UNLDLOOP DS    0H
+         SPACE 3
+         ICM   R1,B'1111',FUNCIFBY Get offset to flag byte.
+         BZ    UNLDDROP       If none, not conditional.
+         AR    R1,R10         Convert to address.
+         SR    R0,R0
+         ICM   R0,B'1000',FUNCIFBI   Get flag value.
+         N     R0,0(R1)       Isolate the flag.
+         CLM   R0,B'1000',FUNCIFBV   Is it the required value?
+         BNE   UNLDNEXT       No, skip it.
+         SPACE 3
+UNLDDROP DS    0H
          XC    WRKPLSTS,WRKPLSTS  Clear out plist.
          NUCEXT CLR,NAME=FUNCNAME,MF=(E,WRKNXCPL),ERROR=1
          LTR   R15,R15        OK?
          BNZ   UNLDERDR       Error, exit.
+UNLDNEXT DS    0H
          LA    R3,FUNCLEN(,R3) Go do
          BCT   R4,UNLDLOOP       next one.
          BR    R9
@@ -198,13 +211,18 @@ MSG025   DS    0H
          LTORG ,
          POP   USING
          TITLE 'CMS functions to take control of.'
-FUNCTBLM DS    0D
+FUNCTBL  DS    0D
          $FUNC ABNEXIT
-FUNCLEN  EQU   *-FUNCTBLM
+FUNCLEN  EQU   *-FUNCTBL
          $FUNC DMSFNSMC       Another name for FINIS.
          $FUNC EPOINT
          $FUNC ESTATE
          $FUNC ESTATEW
+*        $FUNC EXEC           Only called via BALR.
+         $FUNC EXECDROP,IF=(PRMFLAG1,PRMF1EXS,OFF)
+         $FUNC EXECLOAD,IF=(PRMFLAG1,PRMF1EXS,OFF)
+         $FUNC EXECMAP,IF=(PRMFLAG1,PRMF1EXS,OFF)
+         $FUNC EXECSTAT,IF=(PRMFLAG1,PRMF1EXS,OFF)
          $FUNC GLOBALV
          $FUNC LINERD
 *        $FUNC PGMHND         Only called via PGMNPSW.
@@ -212,15 +230,7 @@ FUNCLEN  EQU   *-FUNCTBLM
          $FUNC RDBUF
          $FUNC WAITRD
          $FUNC WRBUF
-FUNCCNTM EQU   (*-FUNCTBLM)/FUNCLEN
-         EJECT ,
-FUNCTBLE DS    0D
-*        $FUNC EXEC           Only called via BALR.
-         $FUNC EXECDROP
-         $FUNC EXECLOAD
-         $FUNC EXECMAP
-         $FUNC EXECSTAT
-FUNCCNTE EQU   (*-FUNCTBLE)/FUNCLEN
+FUNCCNT  EQU   (*-FUNCTBL)/FUNCLEN
          TITLE 'ABNEXIT - Set/clear ABEND handler.'
          PUSH  USING
          USING NUCON,0
@@ -1595,10 +1605,6 @@ WRKPLSTS EQU   WRKPLST1,*-WRKPLST1
 WRKDATA  DS    0D             Start of variable data area.
 WRKLEN   EQU   *-WRKSECT
          TITLE 'DSECTs.'
-FUNCENT  DSECT ,
-FUNCNAME DS    CL8            Function name.
-FUNCEP   DS    A              Offset to entrypoint.
-         EJECT ,
 EXISBLK  DSECT ,
 EXISFWP  DS    A              Next EXISBLK in chain.
 EXISDWDS DS    F              DWords of storage.
@@ -1629,6 +1635,8 @@ FBLSEXIT DS    AL4            System Exit vector address
 FBLEUSER DS    FL4            System Exit User Word
 FBLLENL  EQU   *-FBLNAME      Length of fblock (bytes)
 FBLLEND  EQU   (FBLLENL+7)/8  Length of fblock (dwords)
+         EJECT ,
+         PLUFUNC ,
          EJECT ,
          DMSABW ,
          ORG   ABWSECT+X'F4'

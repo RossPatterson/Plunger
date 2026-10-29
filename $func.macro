@@ -1,4 +1,25 @@
          MACRO ,
-&LABEL   $FUNC &NAME
-&LABEL   DC    CL8'&NAME',A(&NAME-&SYSECT)
+&LABEL   $FUNC &NAME,&IF=
+         LCLC &IFBYTE,&IFBIT,&IFVAL
+&IFBYTE  SETC '0'
+&IFBIT   SETC '0'
+&IFVAL   SETC '0'
+         AIF  ('&IF' EQ '').IDONE
+         AIF   ('&IF'(1,1) NE '(').IBAD
+         AIF   (N'&IF NE 3).IBAD
+         AIF   ('&IF(1)'(1,3) NE 'PRM').IBAD
+         AIF   ('&IF(2)'(1,3) NE 'PRM').IBAD
+&IFBYTE  SETC  '&IF(1)-PRMSECT'
+&IFBIT   SETC  '&IF(2)'
+&IFVAL   SETC  '0'
+         AIF   ('&IF(3)' EQ 'OFF').IDONE
+&IFVAL   SETC  '&IF(2)'
+         AIF   ('&IF(3)' EQ 'ON').IDONE
+         AGO   .IBAD
+.IDONE   ANOP  ,
+&LABEL   DC    CL8'&NAME',A(&NAME-&SYSECT),A(&IFBYTE),AL1(&IFBIT),AL1(&*
+               IFVAL),X'0000'
+         MEXIT ,
+.IBAD    ANOP  ,
+         MNOTE 8,'"&IF=&IF" is invalid.'
          MEND  ,
