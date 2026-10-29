@@ -65,7 +65,7 @@ expects to exist there.
     * or a VM/370 R6 derivative with at least the following updates:
       * CMS update HRC015DS - Prevent UPDATE from failing when the filesystem
         API is updated
-      * CMS update HRC105DS - Extend FSTD/STATEFST for greater compatability
+      * CMS update HRC105DS - Extend FSTD/STATEFST for greater compatibility
         with VM/SP
       * Probably more if you want to run the unit tests.
   * Additional CMS updates:
@@ -294,7 +294,7 @@ companion note:
 >  Use `diskslow` if `<mdsk` fails to operate.
 
 _Plunger_ forces them all to be handled by the `MDSKSLOW` stage (the minidisk
-implementaion of `DISKSLOW`).  This causes one incompatibility:
+implementation of `DISKSLOW`).  This causes one incompatibility:
 
    1. The `>` and `>MDSK` stages will now **always** erase their output file
    before starting, if it already exists, even if the stage exits with a non-0
