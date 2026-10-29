@@ -1,5 +1,6 @@
 Plunger Change LOG
 ==================
+      - Build with debugging.
       - Split PLUNGER and NUCXLOAD debugging.
       - Tweak ZAP format before GA release.
 
