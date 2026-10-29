@@ -15,6 +15,7 @@ ZAPTVERN EQU   8              - VER RELOC=NONE
 *ZAPTVERO                     - VER RELOC=OFFSET - unused
 ZAPTVERJ EQU   9              - VER RELOC=PIPMOD
 *ZAPTVERR                     - VER RELOC=PLUNGER - unused
+ZAPTSKP  EQU   10             - SKIP
 ZAPDLEN  DS    AL1            Data length.
 ZAPDATA  DS    0X             Start of ZAP data.
          MEND  ,

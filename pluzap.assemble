@@ -9,16 +9,11 @@ PLUZAPMD $ENTER ,
          L     R10,NUCPLUPT
          USING PRMSECT,R10
          NI    WRKFLAG1,255-(WRKF1NGO+WRKF1ERX) Turn off "NO GO" flags.
+         NI    WRKFLAG1,255-WRKF1SKP  Turn off "SKIP" flag.
          MVC   WRKZAPNM,=CL8' '  Init name
          XC    WRKZAPLN,WRKZAPLN   and line number.
-         LA    R4,ZAPTBL1     -> Main ZAP table.
+         LA    R4,ZAPTBL      -> ZAP table.
          BAL   R9,APPLY       Apply the main set of ZAPs.
-         SPACE 3
-         TM    PRMFLAG1,PRMF1EXS  Does CMS have EXIS support?
-         BO    GOTEXIS        Yes, skip the EXIS ZAPs.
-         LA    R4,ZAP007      -> EXIS-support ZAP.
-         BAL   R9,APPLY       Apply the EXEC-in-storage set of ZAPs.
-GOTEXIS  DS    0H
          SPACE 3
 EXIT     DS    0H
          SR    R15,R15        Assume all is well.
@@ -33,9 +28,11 @@ MAINLOOP DS    0H
          ICM   R5,B'1111',ZAPOFF Get offset to location.
          SR    R6,R6          Get data
          IC    R6,ZAPDLEN        length.
+         AIF   (NOT &DEBUG).ZAPD01
+         TM    WRKFLAG1,WRKF1SKP  Are we skipping this ZAP?
+         BO    NODEBUG        Yes, skip message.
          TM    PRMFLAG1,PRMF1DBG  Are we debugging?
          BZ    NODEBUG        No, skip message.
-         AIF   (NOT &DEBUG).ZAPD01
          LA    R8,1(,R6)
          SR    R7,R7          Get record
          ICM   R7,B'0001',ZAPTYPE  type.
@@ -45,8 +42,8 @@ MSG015   LINEDIT TEXT='PLUZAP015D ZAP ........ ........: .. ...... ....*
                SUB=(CHARA,WRKZAPNM,DECA,WRKZAPLN,DEC,(R7),HEX,(R5),    *
                HEX4A,(ZAPDATA,(R8))),                                  *
                DISP=ERRMSG,DOT=NO,MF=(E,WRKLEDPL)
-.ZAPD01  ANOP  ,
 NODEBUG  DS    0H
+.ZAPD01  ANOP  ,
          L     R1,WRKZAPLN    Bump
          LA    R1,1(,R1)         line
          ST    R1,WRKZAPLN          number.
@@ -67,6 +64,7 @@ ZAPTYPES DS    0H
          B     CARDSTOP       STOP
          B     CARDVERN       VER RELOC=NONE
          B     CARDVERJ       VER RELOC=PIPMOD
+         B     CARDSKIP       SKIP
 ZAPTMAX  EQU   (*-ZAPTYPES)/4  Highest value of ZAPTYPE
          SPACE 3
 CARDBAD  DS    0H
@@ -76,22 +74,28 @@ CARDBAD  DS    0H
 CARDBEG  DS    0H
          MVC   WRKZAPNM,ZAPDATA  Save the name.
          MVC   WRKZAPLN,=F'1'  Set the line number.
+         NI    WRKFLAG1,255-WRKF1SKP  Turn off "SKIP" flag.
+         AIF   (NOT &DEBUG).ZAPD02
          TM    PRMFLAG1,PRMF1DBG  Are we debugging?
          BZ    CBNDBG          No, skip message.
-         AIF   (NOT &DEBUG).ZAPD02
 MSG011   LINEDIT TEXT='PLUZAP011D Processing ZAP ........',            *
                SUB=(CHARA,WRKZAPNM),                                   *
                DISP=ERRMSG,DOT=NO,MF=(E,WRKLEDPL)
-.ZAPD02  ANOP  ,
 CBNDBG   DS    0H
+.ZAPD02  ANOP  ,
          B     NEXTCARD       Go process next entry.
          SPACE 3
 CARDEND  DS    0H
          NI    WRKFLAG1,255-WRKF1NGO  Turn off "NO GO" flag.
+         NI    WRKFLAG1,255-WRKF1SKP  Turn off "SKIP" flag.
+         MVC   WRKZAPNM,=CL8' '  Init name
+         XC    WRKZAPLN,WRKZAPLN   and line number.
          SH    R6,=H'1'       Fix length.
          B     NEXTCARD       Go process next entry.
          SPACE 3
 CARDREPJ DS    0H
+         TM    WRKFLAG1,WRKF1SKP  Are we skipping this ZAP?
+         BO    NEXTCARD       Yes, go process next entry.
          TM    WRKFLAG1,WRKF1NGO  Is the "NO GO" flag on?
          BO    ERRNOGO        Yes, don't do it.
          C     R6,=F'3'       Length=4?
@@ -104,6 +108,8 @@ CARDREPJ DS    0H
          B     NEXTCARD       Go process next entry.
          SPACE 3
 CARDREPN DS    0H
+         TM    WRKFLAG1,WRKF1SKP  Are we skipping this ZAP?
+         BO    NEXTCARD       Yes, go process next entry.
          TM    WRKFLAG1,WRKF1NGO  Is the "NO GO" flag on?
          BO    ERRNOGO        Yes, don't do it.
          A     R5,PRMPIPMD    Convert offset to address.
@@ -115,6 +121,8 @@ CARDREPO DS    0H
 *
 * RELOC=OFFSET: final value is DATA - DATA_LOCATION ("DC A(XXX-*)").
 *
+         TM    WRKFLAG1,WRKF1SKP  Are we skipping this ZAP?
+         BO    NEXTCARD       Yes, go process next entry.
          C     R6,=F'3'       Length=4?
          BNE   CARDBAD        No, how did THAT happen?
          ICM   R1,B'1111',ZAPDATA  Yes, get the data
@@ -126,6 +134,8 @@ CARDREPO DS    0H
          B     NEXTCARD       Go process next entry.
          SPACE 3
 CARDREPR DS    0H
+         TM    WRKFLAG1,WRKF1SKP  Are we skipping this ZAP?
+         BO    NEXTCARD       Yes, go process next entry.
          C     R6,=F'3'       Length=4?
          BNE   CARDBAD        No, how did THAT happen?
          ICM   R1,B'1111',ZAPDATA  Yes, get the data
@@ -135,7 +145,29 @@ CARDREPR DS    0H
          STCM  R1,B'1111',0(R5)  Replace target with relocated data.
          B     NEXTCARD       Go process next entry.
          SPACE 3
+CARDSKIP DS    0H
+         TM    WRKFLAG1,WRKF1SKP  Are we skipping this ZAP?
+         BO    NEXTCARD       Yes, go process next entry.
+         ICM   R1,B'1111',ZAPDATA  Get offset to flag byte.
+         AR    R1,R10         Convert to address.
+         SR    R0,R0
+         ICM   R0,B'1000',ZAPDATA+1  Get flag value.
+         N     R0,0(R1)       Isolate the flag.
+         CLM   R0,B'1000',ZAPDATA+2  Is it the requested value?
+         BNE   NEXTCARD       No, not skipping.
+         OI    WRKFLAG1,WRKF1SKP  Yes, set the "SKIP" flag.
+         AIF   (NOT &DEBUG).ZAPD03
+         TM    PRMFLAG1,PRMF1DBG  Are we debugging?
+         BZ    NEXTCARD       No, go process next entry.
+MSG028   LINEDIT TEXT='PLUZAP028D Skipping ZAP ........',              *
+               SUB=(CHARA,WRKZAPNM),                                   *
+               DISP=ERRMSG,DOT=NO,MF=(E,WRKLEDPL)
+.ZAPD03  ANOP  ,
+         B     NEXTCARD       Go process next entry.
+         SPACE 3
 CARDVERN DS    0H
+         TM    WRKFLAG1,WRKF1SKP  Are we skipping this ZAP?
+         BO    NEXTCARD       Yes, go process next entry.
          A     R5,PRMPIPMD    Convert offset to address.
          CLC   0(*-*,R5),ZAPDATA *** EXecuted ***
          EX    R6,*-6         Does the data match?
@@ -143,6 +175,8 @@ CARDVERN DS    0H
          B     CARDVERF       No, go fail the ZAP.
          SPACE 3
 CARDVERJ DS    0H
+         TM    WRKFLAG1,WRKF1SKP  Are we skipping this ZAP?
+         BO    NEXTCARD       Yes, go process next entry.
          C     R6,=F'3'       Length=4?
          BNE   CARDBAD        No, how did THAT happen?
          ICM   R1,B'1111',ZAPDATA  Yes, get the data
@@ -214,8 +248,8 @@ MSG027   DS    0H
                MF=(E,WRKLEDPL)
          B     MSG017         Set NOGO flag.
          POP   USING
-         TITLE 'Main ZAPs to always apply to PIPELINE.'
-ZAPTBL1  DS    0D
+         TITLE 'ZAPs to apply to PIPELINE.'
+ZAPTBL   DS    0D
          EJECT ,
 ZAP001   $ZAP  BEGIN
 *
@@ -306,6 +340,23 @@ ZAP006   $ZAP  BEGIN
          $ZAP  VER,DA58,D9C5D5C1D4C54040  DC   CL8'RENAME  '
          $ZAP  VER,DA80,D5D6E4D7C4C9D940  DC   CL8'NOUPDIR '
          $ZAP  REP,DA80,D5D6E4D7C4C9D9E3  DC   CL8'NOUPDIRT'
+         $ZAP  END
+         EJECT ,
+ZAP007   $ZAP  BEGIN
+*
+*        PIPELINE calls EXEC via BALR to run Rexx stages.  Make it
+*        call bREXX directly, because DMSEXC doesn't know about
+*        in-storage EXECs.
+*
+*        We skip this ZAP if CMS update HRC100DS is installed.
+*
+         $ZAP  SKIP,IF=(PRMFLAG1,PRMF1EXS,ON)
+         $ZAP  VER,99B8A,58F00690         L    R15,AEXEC
+         $ZAP  REP,99B8A,58F00FF8         L    R15,NUCPLUEX
+         $ZAP  VER,99F1E,58F00690         L    R15,AEXEC
+         $ZAP  REP,99F1E,58F00FF8         L    R15,NUCPLUEX
+         $ZAP  VER,99F48,58F00690         L    R15,AEXEC
+         $ZAP  REP,99F48,58F00FF8         L    R15,NUCPLUEX
          $ZAP  END
          EJECT ,
 ZAP008   $ZAP  BEGIN
@@ -404,22 +455,6 @@ ZAP011   $ZAP  BEGIN
          $ZAP  END
          EJECT ,
          $ZAP  STOP
-         TITLE 'EXIS ZAP to apply if HRC100DS is not installed.'
-ZAP007   $ZAP  BEGIN
-*
-*        PIPELINE calls EXEC via BALR to run Rexx stages.  Make it
-*        call bREXX directly, because DMSEXC doesn't know about
-*        in-storage EXECs.
-*
-         $ZAP  VER,99B8A,58F00690         L    R15,AEXEC
-         $ZAP  REP,99B8A,58F00FF8         L    R15,NUCPLUEX
-         $ZAP  VER,99F1E,58F00690         L    R15,AEXEC
-         $ZAP  REP,99F1E,58F00FF8         L    R15,NUCPLUEX
-         $ZAP  VER,99F48,58F00690         L    R15,AEXEC
-         $ZAP  REP,99F48,58F00FF8         L    R15,NUCPLUEX
-         $ZAP  END
-         EJECT ,
-         $ZAP  STOP
          LTORG ,
          TITLE 'Working storage.'
 WRKSECT  DSECT ,
@@ -430,6 +465,7 @@ WRKLEND  DS    F              Size of this WRKSECT in doublewords.
 WRKFLAG1 DS    X              Flags
 WRKF1NGO EQU   X'80'          - ZAP "VER" failed.
 WRKF1ERX EQU   X'40'          - Need to fail PLUZAPMD.
+WRKF1SKP EQU   X'20'          - Skip this ZAP.
          SPACE 1
 WRKPLST1 DS    0D             Assorted plists, sharing space.
 WRKLEDPL LINEDIT MF=L,MAXSUBS=5  LINEDIT plist.
