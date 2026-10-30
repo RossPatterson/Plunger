@@ -14,12 +14,12 @@ UploadDir = WorkDir || '/uploads'
 'mkdir' WorkDir DownloadDir UploadDir
 
 /* Download each update we need. */
-/*        Groups.io only allows logged-in members to download files, so we'll used copies Ross saved instead :-( */
+/*        Groups.io only allows logged-in members to download files, so we'll use copies Ross saved instead :-( */
 'cd' DownloadDir '; wget -nv -O "hrc100ds_v2.vmarc" "https://www.dropbox.com/scl/fi/maa0nughdkz4e9fc6prpu/hrc100ds_v2.vmarc?rlkey=vkj0l624g5qkz8v4fih564d4b&dl=0"'
 'cd' DownloadDir '; wget -nv -O "hrc405ds_v4.vmarc" "https://www.dropbox.com/scl/fi/hozx45wcrlx2o7se843ig/hrc405ds_v4.vmarc?rlkey=g5qx2grqiktqd3uzprvf01bz3&dl=0"'
 'cd' DownloadDir '; wget -nv -O "hrc422ds.vmarc" "https://www.dropbox.com/scl/fi/ej7418pmklk1kusn4iqs1/hrc422ds.vmarc?rlkey=7m8q0bm0w4klumss4llqku2n7&dl=0"'
 'cd' DownloadDir '; wget -nv -O "rap016ds.vmarc" "https://www.dropbox.com/scl/fi/n36o850g3t6y0ovak05ju/rap016ds.vmarc?rlkey=50oiyap2qigd7mdk2ydj5ep04&dl=0"'
-'cd' DownloadDir '; wget -nv -O BREXX.zip "https://github.com/RossPatterson/CMS-370-BREXX/releases/download/v1.2.0/BREXX.zip"'
+'cd' DownloadDir '; wget -nv -O BREXX.zip "https://github.com/RossPatterson/CMS-370-BREXX/releases/download/v1.2.1/BREXX.zip"'
 'cd' DownloadDir '; mv hrc100ds_v2.vmarc hrc100ds.vmarc'
 'cd' DownloadDir '; mv hrc405ds_v4.vmarc hrc405ds.vmarc'
 'cd' DownloadDir '; mv *.vmarc' UploadDir
@@ -89,7 +89,7 @@ Call UploadAndUnpack UploadDir || '/rap016ds.vmarc', 'MAINT', 'BALR to TYPLIN th
 
 /* Now everything is unpacked to F and A is empty. */
 
-/* Reuild the CMSHRC macro library, move it to F and S (as Z), and then erase it from A. */
+/* Rebuild the CMSHRC macro library, move it to F and S (as Z), and then erase it from A. */
 'herccontrol "/VMFMAC CMSHRC DMSHRC" -w "^Ready;"'
 'herccontrol "/ACCESS 093 F" -w "^Ready;"'
 'herccontrol "/COPY CMSHRC MACLIB A = = F  (OLDD REPLACE" -w "^Ready;"'
@@ -205,4 +205,3 @@ Parse upper value Substr(InputFile, LastPos('/', InputFile)+1) with PackageFn '.
 'herccontrol "/ACCESS 282 A (ERASE" -w "^Ready;"'
 
 Return
-
