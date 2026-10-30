@@ -74,7 +74,7 @@ if [ "$BUILD_DATE" != "$MY_BUILD_DATE" ] ; then
 	exit 1
 fi
 if [ "$BUILD_TIME" != "$MY_BUILD_TIME" ] ; then
-	echo Wrong build date found: $MY_BUILD_TIME
+	echo Wrong build time found: $MY_BUILD_TIME
 	exit 1
 fi
 
