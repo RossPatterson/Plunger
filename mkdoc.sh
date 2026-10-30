@@ -6,7 +6,7 @@
 # Show the commands.
 set -x
 
-rm -rf fixdoc/.venv 2/dev/null
+rm -rf fixdoc/.venv 2>/dev/null
 
 # Exit if there is an error.
 set -e
@@ -20,4 +20,4 @@ pandoc --from gfm-smart --to html < ../README.md > ../README.html
 deactivate
 cd ..
 
-rm -rf fixdoc/.venv 2/dev/null
+rm -rf fixdoc/.venv 2>/dev/null
