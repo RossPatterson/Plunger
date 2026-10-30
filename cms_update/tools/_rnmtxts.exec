@@ -5,7 +5,7 @@ Signal on Error
 IsS2File. = 0
 Lines.0 = 0
 'EXECIO * DISKR _S2TEXT DATA B (FINIS STEM LINES.'
-Do I = 1 to Lines.I
+Do I = 1 to Lines.0
     Parse var Lines.I Fn .
     IsS2File.Fn = 1
 End
