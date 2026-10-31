@@ -15,13 +15,11 @@ UploadDir = WorkDir || '/uploads'
 
 /* Download each update we need. */
 /*        Groups.io only allows logged-in members to download files, so we'll use copies Ross saved instead :-( */
-'cd' DownloadDir '; wget -nv -O "hrc100ds_v2.vmarc" "https://www.dropbox.com/scl/fi/maa0nughdkz4e9fc6prpu/hrc100ds_v2.vmarc?rlkey=vkj0l624g5qkz8v4fih564d4b&dl=0"'
-'cd' DownloadDir '; wget -nv -O "hrc405ds_v4.vmarc" "https://www.dropbox.com/scl/fi/hozx45wcrlx2o7se843ig/hrc405ds_v4.vmarc?rlkey=g5qx2grqiktqd3uzprvf01bz3&dl=0"'
-'cd' DownloadDir '; wget -nv -O "hrc422ds.vmarc" "https://www.dropbox.com/scl/fi/ej7418pmklk1kusn4iqs1/hrc422ds.vmarc?rlkey=7m8q0bm0w4klumss4llqku2n7&dl=0"'
-'cd' DownloadDir '; wget -nv -O "rap016ds.vmarc" "https://www.dropbox.com/scl/fi/n36o850g3t6y0ovak05ju/rap016ds.vmarc?rlkey=50oiyap2qigd7mdk2ydj5ep04&dl=0"'
+'cd' DownloadDir '; wget -nv -O "hrc100ds.vmarc" "https://github.com/RossPatterson/VM370_Updates/raw/refs/heads/main/CMS/HRC100DS_v2.VMARC"'
+'cd' DownloadDir '; wget -nv -O "hrc103ds.vmarc" "https://github.com/RossPatterson/VM370_Updates/raw/refs/heads/main/CMS/HRC103DS_v1.VMARC"'
+'cd' DownloadDir '; wget -nv -O "hrc405ds.vmarc" "https://github.com/RossPatterson/VM370_Updates/raw/refs/heads/main/CMS/HRC405DS_v4.VMARC"'
+'cd' DownloadDir '; wget -nv -O "hrc422ds.vmarc" "https://github.com/RossPatterson/VM370_Updates/raw/refs/heads/main/CMS/HRC422DS_v1.VMARC"'
 'cd' DownloadDir '; wget -nv -O BREXX.zip "https://github.com/RossPatterson/CMS-370-BREXX/releases/download/v1.2.1/BREXX.zip"'
-'cd' DownloadDir '; mv hrc100ds_v2.vmarc hrc100ds.vmarc'
-'cd' DownloadDir '; mv hrc405ds_v4.vmarc hrc405ds.vmarc'
 'cd' DownloadDir '; mv *.vmarc' UploadDir
 'cd' DownloadDir '; unzip -j BREXX.zip BREXX/gccbrx.cckd ; mv gccbrx.cckd' UploadDir
 'cd' DownloadDir '; rm BREXX.zip'
@@ -85,7 +83,7 @@ UploadDir = WorkDir || '/uploads'
 Call UploadAndUnpack UploadDir || '/hrc405ds.vmarc', 'MAINT', 'NUCEXT and SUBCOM macro and function fixes.'
 Call UploadAndUnpack UploadDir || '/hrc422ds.vmarc', 'MAINT', 'NUCXTEXT occasionally causes DMSLIO109S.'
 Call UploadAndUnpack UploadDir || '/hrc100ds.vmarc', 'MAINT', 'In-storage EXEC and FBLOCK support.'
-Call UploadAndUnpack UploadDir || '/rap016ds.vmarc', 'MAINT', 'BALR to TYPLIN through ADMSCWR.'
+Call UploadAndUnpack UploadDir || '/hrc103ds.vmarc', 'MAINT', 'BALR to TYPLIN through ADMSCWR.'
 
 /* Now everything is unpacked to F and A is empty. */
 

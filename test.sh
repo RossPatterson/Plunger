@@ -20,7 +20,7 @@ mkdir -p $DOWNLOADS $UPLOADS
 cd ~/build_work/repo
 
 # Download the CMS Pipelines Runtime Library Distribution.
-wget -nv "https://www.dropbox.com/scl/fi/psc0xhg8pcxa6vyct0180/runtime.vmarc?rlkey=sez02fzkkkrz7u12gmuat2kvk&dl=0" -O $DOWNLOADS/runtime.vmarc
+wget -nv  -O $DOWNLOADS/runtime.vmarc "https://github.com/RossPatterson/VM370_Updates/raw/refs/heads/main/Pipelines/RUNTIME.VMARC"
 
 # IPL VM/370
 herccontrol "IPL 6A1" -w "USER DSC LOGOFF AS AUTOLOG1" -f "$MARKER"
